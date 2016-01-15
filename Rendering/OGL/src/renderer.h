@@ -1,7 +1,7 @@
 #pragma once
 
 #include "distributor.h"
-#include "world_renderer.h"
+#include "world.h"
 #include "dimension.h"
 #include <SFML/Window.hpp>
 
@@ -24,12 +24,8 @@ public:
     }
   }
 
-  void render_world() {
-
-  }
-
 private:
   Distributor<Dim> distributor_;
-  Camera camera_;
+  World world_;
   sf::Window window_;
 };
