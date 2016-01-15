@@ -1,19 +1,19 @@
+#include "GL/glew.h"
 #include "world.h"
 #include "SFML/OpenGL.hpp"
 
-World::World() :matrices_binding_index{0},
-           light_binding_index{1}
+World::World() :matrices_binding_index_{0},
+           light_binding_index_{1}
 {
-    camera_.max_degrees_rotate{40.0f},
-    camera_.zoom_factor{1.0f},
-    camera_.eye_position{0.0f, 0.0f, 0.8f},
-    camera_.eye_position_default{0.0f, 0.0f, 0.8f},
-    camera_.look_at_point{0.0f, -0.5f, -0.7f}
+    camera_.max_degrees_rotate   = 40.0f;
+    camera_.zoom_factor          = 1.0f;
+    camera_.eye_position         = {0.0f, 0.0f, 0.8f};
+    camera_.look_at_point        = {0.0f, -0.5f, -0.7f};
 
-    light_.position{0.3, 0.5, -0.4, 1.0};
-    light_.intensity{0.8, 0.8, 0.8, 1.0};
-    light_.intensity_ambient{0.1, 0.1, 0.1, 1.0};
-    light_.attenuation{1.0};
+    light_.position = {0.3, 0.5, -0.4, 1.0};
+    light_.intensity = {0.8, 0.8, 0.8, 1.0};
+    light_.intensity_ambient = {0.1, 0.1, 0.1, 1.0};
+    light_.attenuation = 1.0;
 
     /*
       init view matrix uniform
@@ -25,7 +25,7 @@ World::World() :matrices_binding_index{0},
     glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, NULL, GL_STREAM_DRAW);
 
     // Attach to binding index
-    glBindBufferRange(GL_UNIFORM_BUFFER, matrices_binding_index, matricies_UBO_,
+    glBindBufferRange(GL_UNIFORM_BUFFER, matrices_binding_index_, matricies_UBO_,
                       0, sizeof(glm::mat4) * 2);
 
     /*
@@ -39,7 +39,7 @@ World::World() :matrices_binding_index{0},
                  NULL, GL_STREAM_DRAW);
 
     // Attach to binding index
-    glBindBufferRange(GL_UNIFORM_BUFFER, light_binding_index_, g_GlobalLightUBO,
+    glBindBufferRange(GL_UNIFORM_BUFFER, light_binding_index_, light_UBO_,
                       0, 4*sizeof(glm::vec4) + sizeof(float));
 
     // Set uniform values

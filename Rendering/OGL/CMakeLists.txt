@@ -26,11 +26,15 @@ target_link_libraries(sph-renderer ${Boost_LIBRARIES})
 find_package(SFML 2 COMPONENTS system window graphics)
 target_link_libraries(sph-renderer ${SFML_LIBRARIES})
 
-find_package(GLM)
+find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
-find_package(OpenGL)
+find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
 target_link_libraries(sph-renderer ${OPENGL_LIBRARIES})
+
+find_package(GLEW REQUIRED)
+include_directories(${GLEW_INCLUDE_DIRS})
+target_link_libraries(sph-renderer ${GLEW_LIBRARIES})
 
 install(TARGETS sph-renderer DESTINATION bin)
