@@ -31,6 +31,6 @@ include_directories(${GLM_INCLUDE_DIRS})
 
 find_package(OpenGL)
 include_directories(${OPENGL_INCLUDE_DIR})
-target_link_libraries(${OPENGL_LIBRARIES})
+target_link_libraries(sph-renderer ${OPENGL_LIBRARIES})
 
 install(TARGETS sph-renderer DESTINATION bin)
