@@ -2,6 +2,7 @@
 
 #include <boost/mpi.hpp>
 #include <utility>
+#include <stdexcept>
 #include <string>
 #include "vec.h"
 #include "utility_math.h"
