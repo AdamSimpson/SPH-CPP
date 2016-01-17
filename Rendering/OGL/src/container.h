@@ -9,6 +9,7 @@ class Container {
 public:
   Container(const World& world);
   void init();
+  void draw();
 
 private:
   GLuint program_;
@@ -27,4 +28,8 @@ private:
   GLuint vao_;
 
   const World& world_;
+
+  void create_buffers();
+  void create_program();
+  void create_vertices();
 };

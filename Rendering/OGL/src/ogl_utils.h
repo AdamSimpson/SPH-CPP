@@ -7,7 +7,7 @@
 #include <fstream>
 #include <sstream>
 
-inline void check() {
+inline void check_gl() {
   GLenum err = glGetError();
   if(err != GL_NO_ERROR) {
     throw std::runtime_error("OGL Failure: " + err);
@@ -17,13 +17,13 @@ inline void check() {
 void print_program_log(GLuint program) {
   char log[1024];
   glGetProgramInfoLog(program, sizeof(log), NULL, log);
-  std::cout<<"program log "<< program <<": "<<log;
+  std::cout<<"program log "<< program <<": "<< log << std::endl;
 }
 
 void print_shader_log(GLint shader) {
   char log[1024];
   glGetShaderInfoLog(shader,sizeof(log), NULL, log);
-  std::cout<<"shader log "<< shader <<": "<<log;
+  std::cout<<"shader log "<< shader <<": "<< log <<std::endl;
 }
 
 void compile_shader(GLuint shader, const std::string& file_name) {
@@ -34,8 +34,8 @@ void compile_shader(GLuint shader, const std::string& file_name) {
 
   auto string_stream = std::ostringstream{};
   string_stream << file.rdbuf();
+  string_stream << '\0';
   auto shader_source = string_stream.str();
-  shader_source.append('\0');
 
   // Compile shader
   const GLchar *gl_shader_source = shader_source.c_str();

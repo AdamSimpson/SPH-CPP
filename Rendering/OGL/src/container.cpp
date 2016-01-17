@@ -1,9 +1,38 @@
 #include "container.h"
 #include "ogl_utils.h"
+#include "world.h"
 
 Container::Container(const World& world): world_{world}  {}
 
 void Container::init() {
+  this->create_buffers();
+  this->create_program();
+  this->create_vertices();
+}
+
+void Container::draw() {
+  // Setup program
+  glUseProgram(program_);
+
+  // set color uniform
+  float color[] = {1.0, 1.0, 1.0, 1.0};
+  glUniform4fv(color_location_, 1, color);
+
+  // Set uniform binding
+  glUniformBlockBinding(program_, matrices_index_, world_.matrices_binding_index());
+  glUniformBlockBinding(program_, light_index_, world_.light_binding_index());
+
+  // Bind VAO
+  glBindVertexArray(vao_);
+
+  // Draw container
+  glDrawArrays(GL_TRIANGLES, 0, 24);
+
+  // Unbind buffer
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void Container::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
   compile_shader(vertex_shader, "../shaders/container.vert");
@@ -51,4 +80,56 @@ void Container::init() {
   // Clean up
   glBindVertexArray(0);
   glUseProgram(0);
+}
+
+void Container::create_buffers() {
+    // Generate VAO
+    glGenVertexArrays(1, &vao_);
+
+    // Generate vertex buffer
+    glGenBuffers(1, &vbo_);
+}
+
+void Container::create_vertices() {
+  // vert x, y, z, normal x, y, z, tex_coord x, y
+  float vertices[] = {
+    // Floor
+   -1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 0.0, 0.0,
+   -1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+    1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+
+   -1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+    1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+    1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+    //right wall
+    1.0, -1.0,  1.0, -1.0, 0.0, 0.0, 1.0, 0.0,
+    1.0, -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 1.0,  1.0,  -1.0, 0.0, 0.0, 1.0, 1.0,
+
+    1.0, -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
+    1.0, 1.0,  1.0,  -1.0, 0.0, 0.0, 1.0, 1.0,
+    1.0, 1.0, -1.0,  -1.0, 0.0, 0.0, 0.0, 1.0,
+    // Back
+   -1.0, 1.0,  -1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+    1.0, 1.0,  -1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
+    1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+
+    1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+   -1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+   -1.0,  1.0, -1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
+    // Left wall
+   -1.0, -1.0,  1.0, 1.0, 0.0, 0.0, 1.0, 0.0,
+   -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+   -1.0, 1.0,  1.0,  1.0, 0.0, 0.0, 1.0, 1.0,
+
+   -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+   -1.0, 1.0,  1.0,  1.0, 0.0, 0.0, 1.0, 1.0,
+   -1.0, 1.0, -1.0,  1.0, 0.0, 0.0, 0.0, 1.0,
+  };
+
+  // Set buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
+  // Fill buffer
+  glBufferData(GL_ARRAY_BUFFER, 8*24*sizeof(GLfloat), vertices,
+               GL_STATIC_DRAW);
 }

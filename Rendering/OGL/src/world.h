@@ -35,11 +35,11 @@ public:
   **/
   void update();
 
-  int get_light_binding_index() {
+  int light_binding_index() const {
     return light_binding_index_;
   }
 
-  int get_matrices_binding_index() {
+  int matrices_binding_index() const {
     return matrices_binding_index_;
   }
 
