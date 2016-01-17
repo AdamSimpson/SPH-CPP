@@ -5,9 +5,8 @@
 
 int main(int argc, char *argv[]) {
   try {
-    Renderer<three_dimensional> renderer;
 
-    renderer.begin();
+    Renderer<three_dimensional> renderer;
 
   } catch(std::exception const& exception) {
       std::cout << "Aborting: " << exception.what() << std::endl;

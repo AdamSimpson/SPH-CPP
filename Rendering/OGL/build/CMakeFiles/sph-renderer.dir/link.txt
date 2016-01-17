@@ -1,1 +1,0 @@
-/usr/bin/c++      CMakeFiles/sph-renderer.dir/src/main.cpp.o  -o sph-renderer -rdynamic /usr/local/lib/libmpi_cxx.so /usr/local/lib/libmpi.so /usr/local/lib/libboost_mpi.so /usr/local/lib/libboost_system.so /usr/local/lib/libboost_filesystem.so /usr/local/lib/libboost_serialization.so -lsfml-system -lsfml-window -lsfml-graphics -Wl,-rpath,/usr/local/lib: 
