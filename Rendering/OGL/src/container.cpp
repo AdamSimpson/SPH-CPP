@@ -5,7 +5,12 @@
 Container::Container(const World& world): world_{world} {
   this->create_buffers();
   this->create_program();
-  this->create_vertices();
+  this->set_vertices();
+}
+
+Container::~Container() {
+  this->destroy_buffers();
+  this->destroy_program();
 }
 
 void Container::draw() {
@@ -36,17 +41,16 @@ void Container::create_program() {
   compile_shader(vertex_shader, "../shaders/container.vert");
 
   // Compile fragment shader
-  GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  compile_shader(frag_shader, "../shaders/container.frag");
+  GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+  compile_shader(fragment_shader, "../shaders/container.frag");
 
   // Create shader program
   program_ = glCreateProgram();
   glAttachShader(program_, vertex_shader);
-  glAttachShader(program_, frag_shader);
+  glAttachShader(program_, fragment_shader);
 
   // Link  program
-  glLinkProgram(program_);
-  print_program_log(program_);
+  link_program(program_);
 
   // Enable program
   glUseProgram(program_);
@@ -76,8 +80,16 @@ void Container::create_program() {
   glEnableVertexAttribArray(tex_coord_location_);
 
   // Clean up
+  glDetachShader(program_, vertex_shader);
+  glDetachShader(program_, fragment_shader);
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
   glBindVertexArray(0);
   glUseProgram(0);
+}
+
+void Container::destroy_program() {
+  glDeleteProgram(program_);
 }
 
 void Container::create_buffers() {
@@ -88,7 +100,12 @@ void Container::create_buffers() {
     glGenBuffers(1, &vbo_);
 }
 
-void Container::create_vertices() {
+void Container::destroy_buffers() {
+  glDeleteBuffers(1, &vao_);
+  glDeleteBuffers(1, &vbo_);
+}
+
+void Container::set_vertices() {
   // vert x, y, z, normal x, y, z, tex_coord x, y
   float vertices[] = {
     // Floor

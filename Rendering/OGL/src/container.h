@@ -8,6 +8,7 @@
 class Container {
 public:
   Container(const World& world);
+  ~Container();
   void draw();
 
 private:
@@ -29,6 +30,8 @@ private:
   const World& world_;
 
   void create_buffers();
+  void destroy_buffers();
   void create_program();
-  void create_vertices();
+  void destroy_program();
+  void set_vertices();
 };
