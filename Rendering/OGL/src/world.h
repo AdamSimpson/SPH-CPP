@@ -22,8 +22,7 @@ struct Camera {
 **/
 class World {
 public:
-  World(): matrices_binding_index_{0},
-           light_binding_index_{1} {};
+  World(float aspect_ratio);
 
   /**
     Initialize view matrices and camera uniforms

@@ -8,7 +8,8 @@
 #include "glm/gtx/rotate_vector.hpp"
 #include "glm/gtx/norm.hpp"
 
-void World::init(float aspect_ratio)
+World::World(float aspect_ratio): matrices_binding_index_{0},
+                                  light_binding_index_{1}
 {
   aspect_ratio_ = aspect_ratio;
 

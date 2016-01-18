@@ -8,7 +8,6 @@
 class Container {
 public:
   Container(const World& world);
-  void init();
   void draw();
 
 private:

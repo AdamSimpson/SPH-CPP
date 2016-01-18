@@ -6,36 +6,48 @@
 #include "distributor.h"
 #include "world.h"
 #include "container.h"
+#include "particles.h"
 #include "dimension.h"
 
 template<Dimension Dim>
 class Renderer {
 public:
 
+  // Initilize OpenGL and create sf::window
+  // This exists so that OGL is in a usable state before renderables are constructed
+  class GL_Initilizer {
+    public:
+    sf::Window window_;
+
+    GL_Initilizer() {
+      sf::ContextSettings settings;
+      settings.majorVersion = 3;
+      settings.minorVersion = 3;
+
+      const auto modes = sf::VideoMode::getFullscreenModes();
+      window_.create(modes[0], "SPH", sf::Style::Fullscreen, settings);
+
+      glewExperimental = GL_TRUE;
+      glewInit();
+      glGetError(); // Catch and ignore the errors glewInit seems to throw
+    }
+    sf::Window& window() {
+      return window_;
+    }
+  };
+
+  float aspect_ratio() {
+    const auto window_size = window_.getSize();
+    return (float)window_size.x /(float)window_size.y;
+  }
+
   /**
     create OpenGL window and initialize render components
   **/
-  Renderer(): container_{world_}
-  {
-    sf::ContextSettings settings;
-    settings.majorVersion = 3;
-    settings.minorVersion = 3;
-
-    const auto modes = sf::VideoMode::getFullscreenModes();
-    window_.create(modes[0], "SPH", sf::Style::Fullscreen, settings);
-
-    glewExperimental = GL_TRUE;
-    glewInit();
-    glGetError(); // Ignore the errors glewInit seems to throw
-
-    const auto window_size = window_.getSize();
-    const auto window_aspect_ratio = (float)window_size.x /(float)window_size.y;
-
-    world_.init(window_aspect_ratio);
-    container_.init();
-
-    this->render_loop();
-  }
+  Renderer(): window_{gl_initilizer_.window()},
+              world_{this->aspect_ratio()},
+              container_{world_},
+              particles_{world_} {}
 
   /**
     begin main render loop
@@ -43,7 +55,6 @@ public:
   void render_loop() {
     while (window_.isOpen()) {
       this->process_events();
-      this->update_particles();
       this->draw_scene();
     }
   }
@@ -59,10 +70,6 @@ public:
             window_.close();
   }
 
-  void update_particles() {
-
-  }
-
   void draw_scene() {
     // Clear background
     glClearColor(0.15, 0.15, 0.15, 1.0);
@@ -75,8 +82,10 @@ public:
   }
 
 private:
-  sf::Window window_;
+  GL_Initilizer gl_initilizer_;
+  sf::Window& window_;
   Distributor<Dim> distributor_;
   World world_;
   Container container_;
+  Particles particles_;
 };

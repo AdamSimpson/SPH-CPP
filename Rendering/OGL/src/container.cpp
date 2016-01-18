@@ -2,9 +2,7 @@
 #include "ogl_utils.h"
 #include "world.h"
 
-Container::Container(const World& world): world_{world}  {}
-
-void Container::init() {
+Container::Container(const World& world): world_{world} {
   this->create_buffers();
   this->create_program();
   this->create_vertices();
