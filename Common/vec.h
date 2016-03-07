@@ -1,6 +1,7 @@
 #pragma once
 
 #include <iostream>
+#include <cmath>
 #include "utility_math.h"
 #include "dimension.h"
 
@@ -442,7 +443,7 @@ T magnitude_squared(const Vec<T,n>& vec) {
 **/
 template<typename T, int n>
 T magnitude(const Vec<T,n>& vec) {
-  return sqrt(magnitude_squared(vec));
+  return std::sqrt(magnitude_squared(vec));
 }
 
 /**
@@ -450,7 +451,7 @@ T magnitude(const Vec<T,n>& vec) {
 **/
 template<typename T, int n>
 T inverse_magnitude(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
-  return static_cast<T>(1.0) / sqrt(magnitude_squared(lhs, rhs));
+  return static_cast<T>(1.0) / std::sqrt(magnitude_squared(lhs, rhs));
 }
 
 /**
@@ -460,7 +461,7 @@ template<typename T, int n>
 Vec<T,n> floor(const Vec<T,n>& vec) {
    Vec<T,n> floor_vec;
    for(int i=0; i<n; ++i)
-     floor_vec[i] = floor(vec[i]);
+     floor_vec[i] = std::floor(vec[i]);
 
   return floor_vec;
 }
@@ -472,7 +473,7 @@ template<typename T, int n>
 Vec<T,n> ceil(const Vec<T,n>& vec) {
    Vec<T,n> floor_vec;
    for(int i=0; i<n; ++i)
-     floor_vec[i] = ceil(vec[i]);
+     floor_vec[i] = std::ceil(vec[i]);
 
   return floor_vec;
 }

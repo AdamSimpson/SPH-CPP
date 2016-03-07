@@ -23,6 +23,8 @@ public:
     @brief Constructor: initilized components to {0}
   **/
   AABB(): min(0.0), max(0.0) {};
+  AABB(const Vec<Real, two_dimensional> minimum,
+       const Vec<Real, two_dimensional> maximum): min{minimum}, max{maximum} {};
 
   Vec<Real, two_dimensional> min; /**< minimum x,y,{z} coordinate **/
   Vec<Real, two_dimensional> max; /**< maximum x,y,{z} coordinate **/
@@ -74,6 +76,8 @@ public:
     @brief Constructor: initilized components to {0}
   **/
   AABB(): min(0.0), max(0.0) {};
+  AABB(const Vec<Real, three_dimensional> minimum,
+       const Vec<Real, three_dimensional> maximum): min{minimum}, max{maximum} {};
 
   Vec<Real, three_dimensional> min; /**< minimum x,y,{z} coordinate **/
   Vec<Real, three_dimensional> max; /**< maximum x,y,{z} coordinate **/
@@ -113,6 +117,17 @@ public:
     return max - min;
   }
 
+  /**
+   @brief Cast operator: static_cast() components of aabb
+  **/
+  template<typename T_out>
+  operator AABB<T_out, three_dimensional>() {
+
+    const auto min = static_cast<T_out>(this.min);
+    const auto max = static_cast<T_out>(this.max);
+
+    return AABB<T_out, three_dimensional>{min, max};
+  }
 };
 
 /**
@@ -125,4 +140,3 @@ Vec<std::size_t, Dim> bin_count_in_volume(const AABB<Real, Dim>& aabb, Real spac
   Vec<std::size_t,Dim> int_counts(static_cast< Vec<std::size_t,Dim> >(space_counts));
     return int_counts;
   }
-

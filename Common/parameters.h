@@ -21,14 +21,21 @@ template<typename Real, Dimension Dim>
 class Parameters {
 public:
 
+  enum Mode {
+    ACTIVE,
+    PAUSE_COMPUTE,
+    EXIT
+  };
+
   /**
     @brief  Construct initial parameters from file_name .INI file
   **/
-  Parameters(const std::string& file_name) {
+  Parameters(const std::string& file_name): simulation_mode_{Mode::ACTIVE} {
     this->read_INI(file_name);
     this->derive_from_input();
   };
 
+  Parameters()                             = default;
   ~Parameters()                            = default;
   Parameters(const Parameters&)            = default;
   Parameters& operator=(const Parameters&) = default;
@@ -42,12 +49,11 @@ public:
     boost::property_tree::ptree property_tree;
     boost::property_tree::ini_parser::read_ini(file_name, property_tree);
 
-    time_step_count_ = property_tree.get<std::size_t>("SimParameters.number_steps");
     solve_step_count_ = property_tree.get<std::size_t>("SimParameters.number_solve_steps");
     time_step_ = property_tree.get<Real>("SimParameters.time_step");
     initial_global_particle_count_ = property_tree.get<std::size_t>("SimParameters.global_particle_count");
     max_particles_local_ = property_tree.get<std::size_t>("SimParameters.max_particles_local");
-    g_ = property_tree.get<Real>("PhysicalParameters.g");
+    gravity_ = property_tree.get<Real>("PhysicalParameters.g");
     gamma_ = property_tree.get<Real>("PhysicalParameters.gamma");
     visc_c_ = property_tree.get<Real>("PhysicalParameters.visc_c");
     lambda_epsilon_ = property_tree.get<Real>("PhysicalParameters.lambda_epsilon");
@@ -67,13 +73,15 @@ public:
   void derive_from_input() {
     particle_rest_spacing_ = pow(initial_fluid_.volume() / initial_global_particle_count_, 1.0/Dim);
     particle_radius_ = particle_rest_spacing_/2.0;
-    smoothing_radius_ = 2.0*particle_rest_spacing_;
+    smoothing_radius_ = 1.6*particle_rest_spacing_;
 
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(initial_fluid_, particle_rest_spacing_);
     std::size_t particle_count = product(particle_counts);
-    Real mass_fudge = 0.991;
+    Real mass_fudge = 1.0;
     rest_mass_ = mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
-    max_speed_ = smoothing_radius_ / time_step_;
+
+    std::cout<<"Max speed must be reset if smoothing radius changes\n";
+    max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_; // CFL
 
     // @todo params print function to print them all
     std::cout<<"rest_spacing: "<<particle_rest_spacing_<<std::endl;
@@ -92,8 +100,15 @@ public:
   /**
     Set Initial requested global particle count
   **/
-  void set_initial_global_particle_count(std::size_t global_count) {
-    initial_global_particle_count_ = global_count;
+//  void set_initial_global_particle_count(std::size_t global_count) {
+//    initial_global_particle_count_ = global_count;
+//  }
+
+  /**
+    Get Initial requested global particle count
+  **/
+  std::size_t initial_global_particle_count() const {
+    return initial_global_particle_count_;
   }
 
   /**
@@ -128,14 +143,14 @@ public:
     @return Gravitational acceleration magnitude
   **/
   Real gravity() const {
-    return g_;
+    return gravity_;
   }
 
   /**
-    @return number of simulation steps to take
+    @return particle radius
   **/
-  std::size_t time_step_count() const {
-    return time_step_count_;
+  Real particle_radius() const {
+    return particle_radius_;
   }
 
   /**
@@ -180,17 +195,36 @@ public:
     return visc_c_;
   }
 
-private:
+  bool simulation_active() const {
+    return simulation_mode_ != Mode::EXIT;
+  }
+
+  void exit_simulation() {
+    simulation_mode_ = Mode::EXIT;
+  }
+
+  bool compute_active() const {
+    return simulation_mode_ != Mode::PAUSE_COMPUTE && simulation_mode_ != Mode::EXIT;
+  }
+
+  void toggle_computation() {
+    if(simulation_mode_ == Mode::PAUSE_COMPUTE)
+      simulation_mode_ = Mode::ACTIVE;
+    else
+      simulation_mode_ = Mode::PAUSE_COMPUTE;
+  }
+
+
+//private:
   std::size_t max_particles_local_;
   std::size_t initial_global_particle_count_;
-  std::size_t time_step_count_;
   std::size_t solve_step_count_;
   Real particle_rest_spacing_;
   Real particle_radius_;
   Real smoothing_radius_;
   Real rest_density_;
   Real rest_mass_;
-  Real g_;
+  Real gravity_;
   Real gamma_;
   Real lambda_epsilon_;
   Real k_stiff_;
@@ -199,6 +233,7 @@ private:
   Real max_speed_;
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
+  Mode simulation_mode_;
 };
 
 /**

@@ -6,6 +6,7 @@
 #include "parameters.h"
 #include "neighbors.h"
 #include "kernels.h"
+#include "thrust/execution_policy.h"
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/partition.h>
 #include <thrust/iterator/counting_iterator.h>
@@ -177,7 +178,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       velocities_[p].y += g*dt;
     });
   }
@@ -191,7 +192,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       const auto position_p = positions_[p];
       auto position_star_p = position_p + (velocities_[p] * dt);
 
@@ -208,7 +209,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         const Real mass_p = parameters_.rest_mass();
         // Own contribution to density
         Real density = mass_p * W_0;
@@ -221,12 +222,11 @@ public:
         densities_[p] = density;
     });
 
-    Real avg_density = 0;
-    thrust::for_each(begin, end, [&] (std::size_t p) {
-        avg_density += densities_[p];
-    });
-    avg_density/=static_cast<Real>(end-begin);
-    std::cout<<"Average Density: "<<avg_density<<std::endl;
+    // This is node level only
+    Real min_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 10000000, thrust::minimum<Real>());
+    Real max_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::maximum<Real>());
+    Real avg_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::plus<Real>()) / span.end;
+    std::cout<<"min, max avg Density: "<<min_density<<", "<<max_density<<","<<avg_density<<std::endl;
   }
 
   void compute_pressure_lambdas(IndexSpan span) {
@@ -235,7 +235,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       // pressure constraint
       const Real constraint = densities_[p]/parameters_.rest_density() - static_cast<Real>(1.0);
       // Clamp constraint to be positive
@@ -268,7 +268,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       // surface tension constraint
       Vec<Real,Dim> color{0.0};
       for(const std::size_t q : neighbors_[p]) {
@@ -295,7 +295,7 @@ public:
       scratch_scalar_[p] = constraint_tension;
     });
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       // Calculate gradient of constraint
       Real sum_C = 0.0;
       Vec<Real,Dim> sum_gradient{0.0};
@@ -321,7 +321,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         const Real mass_p = parameters_.rest_mass();
 
         const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
@@ -344,7 +344,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         const Real mass_p = parameters_.rest_mass();
 
         const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
@@ -365,7 +365,7 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         // scratch contains delta positions
         const auto position_star_p_old = position_stars_[p];
         auto position_star_p_new = position_stars_[p] + scratch_[p];
@@ -379,18 +379,18 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p]) / parameters_.time_step()};
         clamp_in_place(velocity, static_cast<Real>(-1.0)*parameters_.max_speed(), parameters_.max_speed());
         velocities_[p] = velocity;
     });
   }
- 
+
   void update_positions(IndexSpan span){
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         positions_[p] = position_stars_[p];
       });
 
@@ -403,7 +403,7 @@ public:
     thrust::counting_iterator<std::size_t> end(span.end);
 
     // Compute gradient of color field
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> color{0.0};
         for(const std::size_t q : neighbors_[p]) {
           const Real mass_q = parameters_.rest_mass();
@@ -412,16 +412,18 @@ public:
         scratch_[p] = parameters_.smoothing_radius() * color;
       });
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> surface_tension_force{0.0};
         const Real mass_p = parameters_.rest_mass();
 
         for(const std::size_t q : neighbors_[p]) {
           const Real mass_q = parameters_.rest_mass();
           const Vec<Real,Dim> r = position_stars_[p] - position_stars_[q];
+
           Real r_mag = magnitude(r);
-          if(r_mag < 0.0001)
-            r_mag = 0.0001;
+          if(r_mag < parameters_.smoothing_radius()*0.001)
+            r_mag = parameters_.smoothing_radius()*0.001;
+
           const Vec<Real,Dim> cohesion_force{-parameters_.gamma() * mass_p * mass_q * C(r_mag) * r/r_mag};
           const Vec<Real,Dim> curvature_force{-parameters_.gamma() * mass_p * (scratch_[p] - scratch_[q])};
           const Real K = 2.0*parameters_.rest_density() / (densities_[p] + densities_[q]);
@@ -435,11 +437,11 @@ public:
 
   void apply_viscosity(IndexSpan span) {
     const Poly6<Real,Dim> W{parameters_.smoothing_radius()};
- 
+
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> dv{0.0};
         for(const std::size_t q : neighbors_[p]) {
           const Real mass_q = parameters_.rest_mass();
@@ -454,7 +456,7 @@ private:
   const Parameters<Real,Dim>& parameters_;
   const std::size_t max_local_count_;
   Neighbors<Real,Dim> neighbors_;
- 
+
   sim::Array< Vec<Real,Dim> > positions_;
   sim::Array< Vec<Real,Dim> > position_stars_;
   sim::Array< Vec<Real,Dim> > velocities_;
@@ -471,4 +473,3 @@ template<typename Real, Dimension Dim>
 void apply_boundary_conditions(Vec<Real,Dim>& position, const AABB<Real,Dim>& boundary) {
   clamp_in_place(position, boundary.min, boundary.max);
 }
-

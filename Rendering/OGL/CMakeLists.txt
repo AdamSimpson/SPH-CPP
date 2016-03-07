@@ -13,6 +13,10 @@ add_executable(sph-renderer ${SRC_FILES})
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../../Common)
 
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+find_package(Threads REQUIRED)
+target_link_libraries(sph-renderer ${CMAKE_THREAD_LIBS_INIT})
+
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
@@ -23,8 +27,9 @@ find_package(Boost COMPONENTS mpi system filesystem serialization REQUIRED)
 include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(sph-renderer ${Boost_LIBRARIES})
 
-find_package(SFML 2 COMPONENTS system window graphics)
-target_link_libraries(sph-renderer ${SFML_LIBRARIES})
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE-DIRS})
+target_link_libraries(sph-renderer ${SDL2_LIBRARIES})
 
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})

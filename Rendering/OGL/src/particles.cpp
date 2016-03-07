@@ -1,31 +1,95 @@
 #include "particles.h"
 #include "ogl_utils.h"
 #include "world.h"
+#include <iostream>
 
 Particles::Particles(const World& world): world_{world} {
   this->create_buffers();
   this->create_program();
+
+  // @todo reserve particle vector space
+}
+
+Particles::~Particles() {
+  this->destroy_buffers();
+  this->destroy_program();
+}
+
+void Particles::clear() {
+  points_.clear();
+  colors_.clear();
+}
+
+void Particles::draw(float particle_radius) {
+  /// Update point and color buffers
+
+  // Set buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_points_);
+  // Orphan current buffer
+  glBufferData(GL_ARRAY_BUFFER, points_.size()*sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+  // Fill buffer
+  glBufferData(GL_ARRAY_BUFFER, points_.size()*sizeof(GLfloat), points_.data(), GL_STREAM_DRAW);
+  // Unbind buffer
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  // Set buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_colors_);
+  // Orphan current buffer
+  glBufferData(GL_ARRAY_BUFFER, colors_.size()*sizeof(GLfloat), NULL, GL_STREAM_DRAW);
+  // Fill buffer
+  glBufferData(GL_ARRAY_BUFFER, colors_.size()*sizeof(GLfloat), colors_.data(), GL_STREAM_DRAW);
+  // Unbind buffer
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+  /// Draw particles
+
+  // Bind circle shader program
+  glUseProgram(program_);
+
+  // Set radius uniform
+  glUniform1f(sphere_radius_location_, (GLfloat)particle_radius);
+  // Set uniform binding
+  glUniformBlockBinding(program_, view_matrices_index_, world_.matrices_binding_index());
+  glUniformBlockBinding(program_, light_index_, world_.light_binding_index());
+
+  // Enable VAO
+  glBindVertexArray(vao_);
+
+  // Draw
+  const std::size_t particle_count = points_.size()/3;
+  glDrawArrays(GL_POINTS, 0, particle_count);
+
+  // Unbind VAO and program
+  glBindVertexArray(0);
+  glUseProgram(0);
 }
 
 void Particles::create_buffers() {
   // Generate array object
   glGenVertexArrays(1, &vao_);
   // Generate vertex buffer
-  glGenBuffers(1, &vbo_);
+  glGenBuffers(1, &vbo_points_);
+  glGenBuffers(1, &vbo_colors_);
+}
+
+void Particles::destroy_buffers() {
+  glDeleteBuffers(1, &vao_);
+  glDeleteBuffers(1, &vbo_points_);
+  glDeleteBuffers(1, &vbo_colors_);
 }
 
 void Particles::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  compile_shader(vertex_shader, "../shaders/particle.vert");
+  Utility::compile_shader(vertex_shader, "../shaders/particles.vert");
 
   // Compile frag shader
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  compile_shader(fragment_shader, "../shaders/particle.frag");
+  Utility::compile_shader(fragment_shader, "../shaders/particles.frag");
 
   // Compile geometry shader
   GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-  compile_shader(geometry_shader, "../shaders/particle.geom");
+  Utility::compile_shader(geometry_shader, "../shaders/particles.geom");
 
   // Create shader program
   program_ = glCreateProgram();
@@ -34,8 +98,8 @@ void Particles::create_program() {
   glAttachShader(program_, geometry_shader);
 
   // Link and use program
-  glLinkProgram(program_);
-  print_program_log(program_);
+  Utility::link_program(program_);
+
   glUseProgram(program_);
 
   position_location_ = glGetAttribLocation(program_, "position");
@@ -47,12 +111,25 @@ void Particles::create_program() {
   // Setup VAO
   glBindVertexArray(vao_);
 
-  glBindBuffer(GL_ARRAY_BUFFER, vbo_);
-  glVertexAttribPointer(position_location_, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GL_FLOAT), 0);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_points_);
+  glVertexAttribPointer(position_location_, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GL_FLOAT), 0);
   glEnableVertexAttribArray(position_location_);
-  glVertexAttribPointer(color_location_, 3, GL_FLOAT, GL_FALSE, 6*sizeof(GL_FLOAT),(void*)(3*sizeof(GL_FLOAT)));
+  glBindBuffer(GL_ARRAY_BUFFER, vbo_colors_);
+  glVertexAttribPointer(color_location_, 3, GL_FLOAT, GL_FALSE, 3*sizeof(GL_FLOAT), 0);
   glEnableVertexAttribArray(color_location_);
 
+  // Cleanup
+  glDetachShader(program_, vertex_shader);
+  glDetachShader(program_, fragment_shader);
+  glDetachShader(program_, geometry_shader);
+  glDeleteShader(vertex_shader);
+  glDeleteShader(fragment_shader);
+  glDeleteShader(geometry_shader);
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glUseProgram(0);
+}
+
+void Particles::destroy_program() {
+  glDeleteProgram(program_);
 }

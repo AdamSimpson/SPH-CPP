@@ -38,11 +38,11 @@ void Container::draw() {
 void Container::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  compile_shader(vertex_shader, "../shaders/container.vert");
+  Utility::compile_shader(vertex_shader, "../shaders/container.vert");
 
   // Compile fragment shader
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  compile_shader(fragment_shader, "../shaders/container.frag");
+  Utility::compile_shader(fragment_shader, "../shaders/container.frag");
 
   // Create shader program
   program_ = glCreateProgram();
@@ -50,7 +50,7 @@ void Container::create_program() {
   glAttachShader(program_, fragment_shader);
 
   // Link  program
-  link_program(program_);
+  Utility::link_program(program_);
 
   // Enable program
   glUseProgram(program_);
@@ -85,6 +85,7 @@ void Container::create_program() {
   glDeleteShader(vertex_shader);
   glDeleteShader(fragment_shader);
   glBindVertexArray(0);
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
   glUseProgram(0);
 }
 
@@ -141,6 +142,12 @@ void Container::set_vertices() {
    -1.0, 1.0,  1.0,  1.0, 0.0, 0.0, 1.0, 1.0,
    -1.0, 1.0, -1.0,  1.0, 0.0, 0.0, 0.0, 1.0,
   };
+
+  //Scale boundaries
+  // @todo refactor this to correctly scale with boundary size
+  float scale = 4.0f;
+ for(float &vertex : vertices )
+    vertex *= scale;
 
   // Set buffer
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);

@@ -126,7 +126,7 @@ public:
     if(r_mag < r_min_)
       r_mag = r_min_;
 
-    return norm_ * (h_ - r_mag) * (h_ - r_mag) *  r / r_mag;
+    return norm_ * (h_ - r_mag) * (h_ - r_mag)  * r / r_mag;
   };
 
 private:

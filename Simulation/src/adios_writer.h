@@ -29,7 +29,7 @@ public:
               const Particles<Real,Dim>& particles): distributor_{distributor},
                                                      particles_{particles}
   {
-    int err = adios_init(adios_writer_xml.data(), static_cast<MPI_Comm>(distributor.compute_comm()));
+    int err = adios_init(adios_writer_xml.c_str(), static_cast<MPI_Comm>(distributor.compute_comm()));
     if(err) {
       // Not all ranks return err on failure and so
       // MPI_Finalize will deadlock when distributor is destructed
@@ -38,7 +38,6 @@ public:
       exit(1);
     }
   }
-
   /**
     @brief Destructor: finalize adios environment
   **/
