@@ -1,8 +1,9 @@
 #include "container.h"
 #include "ogl_utils.h"
-#include "world.h"
+#include "light.h"
+#include "camera.h"
 
-Container::Container(const World& world): world_{world} {
+Container::Container() {
   this->create_buffers();
   this->create_program();
   this->set_vertices();
@@ -22,8 +23,8 @@ void Container::draw() {
   glUniform4fv(color_location_, 1, color);
 
   // Set uniform binding
-  glUniformBlockBinding(program_, matrices_index_, world_.matrices_binding_index());
-  glUniformBlockBinding(program_, light_index_, world_.light_binding_index());
+  glUniformBlockBinding(program_, matrices_index_, Camera::binding_index);
+  glUniformBlockBinding(program_, light_index_, Light::binding_index);
 
   // Bind VAO
   glBindVertexArray(vao_);

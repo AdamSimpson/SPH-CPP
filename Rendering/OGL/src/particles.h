@@ -1,15 +1,16 @@
 #pragma once
 
-#include "world.h"
+#include "drawable.h"
 #include "dimension.h"
+#include "GL/glew.h"
 #include "vec.h"
 #include <vector>
 
-class Particles {
+class Particles : public Drawable {
 public:
-  Particles(const World& world);
+  Particles();
   ~Particles();
-  void draw(float particle_radius);
+  void draw() const;
   void clear();
 
   template<typename Real>
@@ -31,7 +32,7 @@ public:
         points_.push_back(point.x);
         points_.push_back(point.y);
         points_.push_back(point.z);
-
+        
         colors_.push_back(0.0);
         colors_.push_back(0.0);
         colors_.push_back(1.0);
@@ -43,8 +44,6 @@ public:
   }
 
 private:
-  const World& world_;
-
   GLuint program_;
 
   GLint position_location_;

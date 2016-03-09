@@ -21,6 +21,10 @@ int main(int argc, char *argv[]) {
     Distributor<float, three_dimensional> distributor;
     Parameters<float,three_dimensional> parameters{"../../../Common/params.ini"};
     Visualizer<float,three_dimensional> visualizer{parameters};
+    Particles particles;
+
+    visualizer.add_drawable(particles);
+
     std::future<void> compute_future;
 
     while(parameters.simulation_active()) {
@@ -29,8 +33,8 @@ int main(int argc, char *argv[]) {
       // Sync compute and render processes if neccessary
       if(is_ready(compute_future) && parameters.compute_active()) {
         // sync particles between distributors copy and renderer
-        visualizer.particles().clear();
-        visualizer.particles().add_particles(distributor.particle_positions());
+        particles.clear();
+        particles.add_particles(distributor.particle_positions());
 
         // launch request for updated compute data asynchronously
         compute_future = std::async(std::launch::async, [&] {

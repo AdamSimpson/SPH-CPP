@@ -3,11 +3,9 @@
 #include "GL/glew.h"
 #include "glm/glm.hpp"
 
-#include "world.h"
-
 class Container {
 public:
-  Container(const World& world);
+  Container();
   ~Container();
   void draw();
 
@@ -26,8 +24,6 @@ private:
   // Vertex objects
   GLuint vbo_;
   GLuint vao_;
-
-  const World& world_;
 
   void create_buffers();
   void destroy_buffers();

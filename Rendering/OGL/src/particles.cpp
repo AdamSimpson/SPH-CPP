@@ -1,9 +1,11 @@
 #include "particles.h"
+#include "GL/glew.h"
 #include "ogl_utils.h"
-#include "world.h"
+#include "light.h"
+#include "camera.h"
 #include <iostream>
 
-Particles::Particles(const World& world): world_{world} {
+Particles::Particles() {
   this->create_buffers();
   this->create_program();
 
@@ -20,9 +22,10 @@ void Particles::clear() {
   colors_.clear();
 }
 
-void Particles::draw(float particle_radius) {
+void Particles::draw() const {
   /// Update point and color buffers
 
+  float particle_radius = 0.025f;
   // Set buffer
   glBindBuffer(GL_ARRAY_BUFFER, vbo_points_);
   // Orphan current buffer
@@ -49,8 +52,8 @@ void Particles::draw(float particle_radius) {
   // Set radius uniform
   glUniform1f(sphere_radius_location_, (GLfloat)particle_radius);
   // Set uniform binding
-  glUniformBlockBinding(program_, view_matrices_index_, world_.matrices_binding_index());
-  glUniformBlockBinding(program_, light_index_, world_.light_binding_index());
+  glUniformBlockBinding(program_, view_matrices_index_, Camera::binding_index);
+  glUniformBlockBinding(program_, light_index_, Light::binding_index);
 
   // Enable VAO
   glBindVertexArray(vao_);
