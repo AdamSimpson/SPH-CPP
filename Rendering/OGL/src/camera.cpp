@@ -35,8 +35,8 @@ void Camera::init() {
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
 
-void Camera::set_location(glm::vec3 new_location) {
-  world_position_ = new_location;
+void Camera::set_position(glm::vec3 new_position) {
+  world_position_ = new_position;
 }
 
 void Camera::move_forward() {

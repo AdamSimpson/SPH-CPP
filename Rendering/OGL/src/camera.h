@@ -10,7 +10,7 @@ public:
 
   Camera();
   void init();
-  void set_location(glm::vec3 new_location);
+  void set_position(glm::vec3 new_position);
   void move_forward();
   void move_back();
   void move_left();

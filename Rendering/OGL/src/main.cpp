@@ -3,6 +3,7 @@
 #include <iostream>
 #include <future>
 
+#include "user_input.h"
 #include "visualizer.h"
 #include "distributor.h"
 #include "particles.h"
@@ -20,7 +21,8 @@ int main(int argc, char *argv[]) {
   try {
     Distributor<float, three_dimensional> distributor;
     Parameters<float,three_dimensional> parameters{"../../../Common/params.ini"};
-    Visualizer<float,three_dimensional> visualizer{parameters};
+    UserInput user_input;
+    Visualizer<float,three_dimensional> visualizer{parameters, user_input};
     Particles particles;
 
     visualizer.add_drawable(particles);
@@ -28,6 +30,7 @@ int main(int argc, char *argv[]) {
     std::future<void> compute_future;
 
     while(parameters.simulation_active()) {
+      user_input.update();
       visualizer.process_input();
 
       // Sync compute and render processes if neccessary

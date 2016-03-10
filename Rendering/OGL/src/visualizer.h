@@ -5,7 +5,9 @@
 #include "ogl_utils.h"
 #include <unordered_set>
 #include <vector>
+#include <iostream>
 
+#include "user_input.h"
 #include "drawable.h"
 #include "distributor.h"
 #include "dimension.h"
@@ -21,7 +23,9 @@ public:
   /**
     create OpenGL window and initialize render components
   **/
-  Visualizer(Parameters<Real, Dim>& parameters): parameters_{parameters}
+  Visualizer(Parameters<Real, Dim>& parameters,
+             const UserInput& user_input): parameters_{parameters},
+                                           user_input_{user_input}
   {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
       throw std::runtime_error("Failed to initialize SDL: " + std::string(SDL_GetError()));
@@ -64,7 +68,17 @@ public:
 
     // post OGL initilization camera and light initilization
     camera_.init();
+    glm::vec3 camera_position{parameters_.boundary_.length() * 0.5f,
+                              parameters_.boundary_.height() * 0.5f,
+                              parameters_.boundary_.depth() * 3.5f };
+    camera_.set_position(camera_position);
     light_.init();
+    glm::vec3 light_position{parameters_.boundary_.length() * 1.5f,
+                              parameters_.boundary_.height() * 6.5f,
+                              parameters_.boundary_.depth() * 2.5f };
+    light_.set_position(light_position);
+
+    sdl_ticks_ = 0;
   }
 
   ~Visualizer() {
@@ -74,6 +88,11 @@ public:
   }
 
   void display() {
+    unsigned int ticks = SDL_GetTicks();
+    float seconds = (SDL_GetTicks() - sdl_ticks_)/1000.0;
+    sdl_ticks_ = ticks;
+    std::cout<<"FPS: "<<1.0/seconds<<std::endl;
+
     SDL_GL_SwapWindow(window_);
   }
 
@@ -81,62 +100,6 @@ public:
     int w,h;
     SDL_GL_GetDrawableSize(window_, &w, &h);
     return (float)w /(float)h;
-  }
-
-  // Key state is retained in an unordered_set
-  // To persist state between key up/down events
-  void process_input() {
-    SDL_Event event;
-    while(SDL_PollEvent(&event)) {
-      switch(event.type) {
-        case SDL_KEYDOWN:
-          keys_pressed_.insert(event.key.keysym.sym);
-          break;
-        case SDL_KEYUP:
-          keys_pressed_.erase(event.key.keysym.sym);
-          break;
-        case SDL_MOUSEMOTION:
-          camera_.handle_mouse(event.motion.xrel, event.motion.yrel);
-          break;
-      }
-    }
-
-    // Process pressed keys
-    for(auto key : keys_pressed_) {
-      switch(key) {
-        case SDLK_ESCAPE:
-          parameters_.exit_simulation();
-          break;
-        case SDLK_w:
-          camera_.move_forward();
-          break;
-        case SDLK_a:
-          camera_.move_left();
-          break;
-        case SDLK_s:
-          camera_.move_back();
-          break;
-        case SDLK_d:
-          camera_.move_right();
-          break;
-        case SDLK_p:
-          parameters_.toggle_computation();
-          break;
-        case SDLK_UP:
-          camera_.handle_mouse(0, 1);
-          break;
-        case SDLK_DOWN:
-          camera_.handle_mouse(0, -1);
-          break;
-        case SDLK_RIGHT:
-          camera_.handle_mouse(1, 0);
-          break;
-        case SDLK_LEFT:
-          camera_.handle_mouse(-1,0);
-          break;
-      }
-    }
-
   }
 
   void add_drawable(const Drawable& drawable) {
@@ -159,12 +122,44 @@ public:
     this->display();
   }
 
+  // @todo this should be moved into the parameters "manager" class which handles
+    // changing user parameters from a UI
+  void process_input() {
+    if(user_input_.key_was_pressed("escape"))
+      parameters_.exit_simulation();
+
+    if(user_input_.key_was_pressed("p"))
+      parameters_.toggle_computation();
+
+    // Camera key movement
+    if(user_input_.key_is_pressed("w"))
+      camera_.move_forward();
+    if(user_input_.key_is_pressed("a"))
+      camera_.move_left();
+    if(user_input_.key_is_pressed("s"))
+      camera_.move_back();
+    if(user_input_.key_is_pressed("d"))
+      camera_.move_right();
+
+    camera_.handle_mouse(user_input_.mouse_delta_x(), user_input_.mouse_delta_y());
+
+    if(user_input_.key_is_pressed("up"))
+      camera_.handle_mouse(0.0f, -1.0f);
+    if(user_input_.key_is_pressed("down"))
+      camera_.handle_mouse(0.0f, 1.0f);
+    if(user_input_.key_is_pressed("left"))
+      camera_.handle_mouse(-1.0f, 0.0f);
+    if(user_input_.key_is_pressed("right"))
+      camera_.handle_mouse(1.0f, 0.0f);
+  }
+
 private:
   SDL_Window* window_;
   SDL_GLContext gl_context_;
+  volatile unsigned int sdl_ticks_;
   Camera camera_;
   Light light_;
-  Parameters<Real,Dim> &parameters_;
+  Parameters<Real,Dim>& parameters_;
+  const UserInput& user_input_;
   std::vector<Drawable const *> drawables_;
-  std::unordered_set<SDL_Keycode> keys_pressed_;
 };

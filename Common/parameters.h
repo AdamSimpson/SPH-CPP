@@ -3,6 +3,7 @@
 #include "dimension.h"
 #include "vec.h"
 #include "aabb.h"
+
 #include <cmath>
 #include <string>
 #include <boost/property_tree/ptree.hpp>
@@ -234,6 +235,7 @@ public:
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
   Mode simulation_mode_;
+
 };
 
 /**
