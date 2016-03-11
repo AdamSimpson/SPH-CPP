@@ -50,7 +50,7 @@ public:
   }
 
   // Sync simulation parameters
-  void sync_to_computes(Parameters<Real,Dim> & parameters) {
+  void sync_to_computes(Parameters<Real,Dim>& parameters) {
     // Broadcast parameters from render node to compute nodes
     boost::mpi::broadcast(comm_world_, parameters ,0);
   }

@@ -1,12 +1,13 @@
 #include "container.h"
+#include "aabb.h"
 #include "ogl_utils.h"
 #include "light.h"
 #include "camera.h"
 
-Container::Container() {
+Container::Container(const AABB<float, three_dimensional>& container_bounds) {
   this->create_buffers();
   this->create_program();
-  this->set_vertices();
+  this->set_vertices(container_bounds);
 }
 
 Container::~Container() {
@@ -14,7 +15,7 @@ Container::~Container() {
   this->destroy_program();
 }
 
-void Container::draw() {
+void Container::draw() const {
   // Setup program
   glUseProgram(program_);
 
@@ -30,7 +31,7 @@ void Container::draw() {
   glBindVertexArray(vao_);
 
   // Draw container
-  glDrawArrays(GL_TRIANGLES, 0, 24);
+  glDrawArrays(GL_TRIANGLES, 0, 30);
 
   // Unbind buffer
   glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -107,52 +108,58 @@ void Container::destroy_buffers() {
   glDeleteBuffers(1, &vbo_);
 }
 
-void Container::set_vertices() {
+void Container::set_vertices(const AABB<float, three_dimensional>& bounds) {
   // vert x, y, z, normal x, y, z, tex_coord x, y
   float vertices[] = {
     // Floor
-   -1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 0.0, 0.0,
-   -1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-    1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
+    bounds.min.x, bounds.min.y, bounds.max.z, 0.0, 1.0, 0.0, 0.0, 0.0,
+    bounds.min.x, bounds.min.y, bounds.min.z, 0.0, 1.0, 0.0, 0.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.max.z, 0.0, 1.0, 0.0, 1.0, 0.0,
 
-   -1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 0.0, 1.0,
-    1.0, -1.0,  1.0, 0.0, 1.0, 0.0, 1.0, 0.0,
-    1.0, -1.0, -1.0, 0.0, 1.0, 0.0, 1.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.max.z, 0.0, 1.0, 0.0, 1.0, 0.0,
+    bounds.min.x, bounds.min.y, bounds.min.z, 0.0, 1.0, 0.0, 0.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.min.z, 0.0, 1.0, 0.0, 1.0, 1.0,
+
     //right wall
-    1.0, -1.0,  1.0, -1.0, 0.0, 0.0, 1.0, 0.0,
-    1.0, -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
-    1.0, 1.0,  1.0,  -1.0, 0.0, 0.0, 1.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.max.z, -1.0, 0.0, 0.0, 1.0, 0.0,
+    bounds.max.x, bounds.min.y, bounds.min.z, -1.0, 0.0, 0.0, 0.0, 0.0,
+    bounds.max.x, bounds.max.y, bounds.max.z,  -1.0, 0.0, 0.0, 1.0, 1.0,
 
-    1.0, -1.0, -1.0, -1.0, 0.0, 0.0, 0.0, 0.0,
-    1.0, 1.0,  1.0,  -1.0, 0.0, 0.0, 1.0, 1.0,
-    1.0, 1.0, -1.0,  -1.0, 0.0, 0.0, 0.0, 1.0,
+    bounds.max.x, bounds.max.y, bounds.min.z,  -1.0, 0.0, 0.0, 0.0, 1.0,
+    bounds.max.x, bounds.max.y, bounds.max.z,  -1.0, 0.0, 0.0, 1.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.min.z, -1.0, 0.0, 0.0, 0.0, 0.0,
+
     // Back
-   -1.0, 1.0,  -1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-    1.0, 1.0,  -1.0, 0.0, 0.0, 1.0, 1.0, 1.0,
-    1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
+    bounds.min.x, bounds.max.y, bounds.min.z, 0.0, 0.0, 1.0, 0.0, 1.0,
+    bounds.max.x, bounds.max.y, bounds.min.z, 0.0, 0.0, 1.0, 1.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.min.z, 0.0, 0.0, 1.0, 1.0, 0.0,
 
-    1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-   -1.0, -1.0, -1.0, 0.0, 0.0, 1.0, 0.0, 0.0,
-   -1.0,  1.0, -1.0, 0.0, 0.0, 1.0, 0.0, 1.0,
-    // Left wall
-   -1.0, -1.0,  1.0, 1.0, 0.0, 0.0, 1.0, 0.0,
-   -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-   -1.0, 1.0,  1.0,  1.0, 0.0, 0.0, 1.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.min.z, 0.0, 0.0, 1.0, 1.0, 0.0,
+    bounds.min.x, bounds.min.y, bounds.min.z, 0.0, 0.0, 1.0, 0.0, 0.0,
+    bounds.min.x, bounds.max.y, bounds.min.z, 0.0, 0.0, 1.0, 0.0, 1.0,
 
-   -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-   -1.0, 1.0,  1.0,  1.0, 0.0, 0.0, 1.0, 1.0,
-   -1.0, 1.0, -1.0,  1.0, 0.0, 0.0, 0.0, 1.0,
+    // Front
+    bounds.min.x, bounds.max.y, bounds.max.z, 0.0, 0.0, -1.0, 0.0, 1.0,
+    bounds.max.x, bounds.min.y, bounds.max.z, 0.0, 0.0, -1.0, 1.0, 0.0,
+    bounds.max.x, bounds.max.y, bounds.max.z, 0.0, 0.0, -1.0, 1.0, 1.0,
+
+    bounds.max.x, bounds.min.y, bounds.max.z, 0.0, 0.0, -1.0, 1.0, 0.0,
+    bounds.min.x, bounds.max.y, bounds.max.z, 0.0, 0.0, -1.0, 0.0, 1.0,
+    bounds.min.x, bounds.min.y, bounds.max.z, 0.0, 0.0, -1.0, 0.0, 0.0,
+
+     // Left wall
+    bounds.min.x, bounds.min.y, bounds.max.z, 1.0, 0.0, 0.0, 1.0, 0.0,
+    bounds.min.x, bounds.max.y, bounds.max.z,  1.0, 0.0, 0.0, 1.0, 1.0,
+    bounds.min.x, bounds.min.y, bounds.min.z, 1.0, 0.0, 0.0, 0.0, 0.0,
+
+    bounds.min.x, bounds.min.y, bounds.min.z, 1.0, 0.0, 0.0, 0.0, 0.0,
+    bounds.min.x, bounds.max.y, bounds.max.z,  1.0, 0.0, 0.0, 1.0, 1.0,
+    bounds.min.x, bounds.max.y, bounds.min.z,  1.0, 0.0, 0.0, 0.0, 1.0,
   };
-
-  //Scale boundaries
-  // @todo refactor this to correctly scale with boundary size
-  float scale = 4.0f;
- for(float &vertex : vertices )
-    vertex *= scale;
 
   // Set buffer
   glBindBuffer(GL_ARRAY_BUFFER, vbo_);
   // Fill buffer
-  glBufferData(GL_ARRAY_BUFFER, 8*24*sizeof(GLfloat), vertices,
+  glBufferData(GL_ARRAY_BUFFER, 8*30*sizeof(GLfloat), vertices,
                GL_STATIC_DRAW);
 }

@@ -1,43 +1,35 @@
 #include "dimension.h"
 #include <exception>
 #include <iostream>
-#include <future>
 
 #include "user_input.h"
 #include "visualizer.h"
 #include "distributor.h"
 #include "particles.h"
 
-// Test if future has completed
-template<typename R>
-bool is_ready(std::future<R> const& f) {
-  if(!f.valid()) // future hasn't been assigned yet
-    return true;
-  else
-    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-}
-
 int main(int argc, char *argv[]) {
   try {
     Distributor<float, three_dimensional> distributor;
     Parameters<float,three_dimensional> parameters{"../../../Common/params.ini"};
     UserInput user_input;
-    Visualizer<float,three_dimensional> visualizer{parameters, user_input};
+    // @todo remove parameters from visualizer and just pass in world boundary
+    Visualizer<float,three_dimensional> visualizer{parameters};
     Particles particles;
+    Container container{static_cast<AABB<float, three_dimensional>>(parameters.boundary_) };
 
     visualizer.add_drawable(particles);
+    visualizer.add_drawable(container);
 
     std::future<void> compute_future;
 
     while(parameters.simulation_active()) {
       user_input.update();
-      visualizer.process_input();
+      visualizer.process_input(user_input);
 
       // Sync compute and render processes if neccessary
-      if(is_ready(compute_future) && parameters.compute_active()) {
+      if(Utility::is_ready(compute_future) && parameters.compute_active()) {
         // sync particles between distributors copy and renderer
-        particles.clear();
-        particles.add_particles(distributor.particle_positions());
+        particles.set_particles(distributor.particle_positions());
 
         // launch request for updated compute data asynchronously
         compute_future = std::async(std::launch::async, [&] {

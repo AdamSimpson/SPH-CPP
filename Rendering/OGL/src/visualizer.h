@@ -6,6 +6,7 @@
 #include <unordered_set>
 #include <vector>
 #include <iostream>
+#include <memory>
 
 #include "user_input.h"
 #include "drawable.h"
@@ -23,9 +24,8 @@ public:
   /**
     create OpenGL window and initialize render components
   **/
-  Visualizer(Parameters<Real, Dim>& parameters,
-             const UserInput& user_input): parameters_{parameters},
-                                           user_input_{user_input}
+  // @todo remove parameters and just pass in required
+  Visualizer(Parameters<Real, Dim>& parameters): parameters_{parameters}
   {
     if (SDL_Init(SDL_INIT_VIDEO) != 0)
       throw std::runtime_error("Failed to initialize SDL: " + std::string(SDL_GetError()));
@@ -123,34 +123,15 @@ public:
   }
 
   // @todo this should be moved into the parameters "manager" class which handles
-    // changing user parameters from a UI
-  void process_input() {
-    if(user_input_.key_was_pressed("escape"))
+  // changing user parameters from a UI
+  void process_input(const UserInput& user_input) {
+    if(user_input.key_was_pressed("escape"))
       parameters_.exit_simulation();
 
-    if(user_input_.key_was_pressed("p"))
+    if(user_input.key_was_pressed("p"))
       parameters_.toggle_computation();
 
-    // Camera key movement
-    if(user_input_.key_is_pressed("w"))
-      camera_.move_forward();
-    if(user_input_.key_is_pressed("a"))
-      camera_.move_left();
-    if(user_input_.key_is_pressed("s"))
-      camera_.move_back();
-    if(user_input_.key_is_pressed("d"))
-      camera_.move_right();
-
-    camera_.handle_mouse(user_input_.mouse_delta_x(), user_input_.mouse_delta_y());
-
-    if(user_input_.key_is_pressed("up"))
-      camera_.handle_mouse(0.0f, -1.0f);
-    if(user_input_.key_is_pressed("down"))
-      camera_.handle_mouse(0.0f, 1.0f);
-    if(user_input_.key_is_pressed("left"))
-      camera_.handle_mouse(-1.0f, 0.0f);
-    if(user_input_.key_is_pressed("right"))
-      camera_.handle_mouse(1.0f, 0.0f);
+    camera_.process_input(user_input);
   }
 
 private:
@@ -160,6 +141,5 @@ private:
   Camera camera_;
   Light light_;
   Parameters<Real,Dim>& parameters_;
-  const UserInput& user_input_;
-  std::vector<Drawable const *> drawables_;
+  std::vector<const Drawable*> drawables_;
 };

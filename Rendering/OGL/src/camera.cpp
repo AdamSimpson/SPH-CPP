@@ -103,3 +103,26 @@ void Camera::update(float aspect_ratio) {
   // Unbind
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
 }
+
+// Process User input
+void Camera::process_input(const UserInput& user_input) {
+  if(user_input.key_is_pressed("w"))
+    this->move_forward();
+  if(user_input.key_is_pressed("a"))
+    this->move_left();
+  if(user_input.key_is_pressed("s"))
+    this->move_back();
+  if(user_input.key_is_pressed("d"))
+    this->move_right();
+
+  this->handle_mouse(user_input.mouse_delta_x(), user_input.mouse_delta_y());
+
+  if(user_input.key_is_pressed("up"))
+    this->handle_mouse(0.0f, -1.0f);
+  if(user_input.key_is_pressed("down"))
+    this->handle_mouse(0.0f, 1.0f);
+  if(user_input.key_is_pressed("left"))
+    this->handle_mouse(-1.0f, 0.0f);
+  if(user_input.key_is_pressed("right"))
+    this->handle_mouse(1.0f, 0.0f);
+}

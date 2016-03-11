@@ -1,13 +1,15 @@
 #pragma once
 
+#include "drawable.h"
+#include "aabb.h"
 #include "GL/glew.h"
 #include "glm/glm.hpp"
 
-class Container {
+class Container: public Drawable {
 public:
-  Container();
+  Container(const AABB<float, three_dimensional>& container_bounds);
   ~Container();
-  void draw();
+  void draw() const;
 
 private:
   GLuint program_;
@@ -29,5 +31,5 @@ private:
   void destroy_buffers();
   void create_program();
   void destroy_program();
-  void set_vertices();
+  void set_vertices(const AABB<float, three_dimensional>& bounds);
 };

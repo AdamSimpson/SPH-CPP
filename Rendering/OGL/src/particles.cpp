@@ -8,8 +8,6 @@
 Particles::Particles() {
   this->create_buffers();
   this->create_program();
-
-  // @todo reserve particle vector space
 }
 
 Particles::~Particles() {

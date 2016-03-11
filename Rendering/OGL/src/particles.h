@@ -13,6 +13,12 @@ public:
   void draw() const;
   void clear();
 
+  template<typename Real, Dimension Dim>
+  void set_particles(const std::vector< Vec<Real,Dim> >& positions) {
+    this->clear();
+    this->add_particles(positions);
+  }
+
   template<typename Real>
   void add_particles(const std::vector< Vec<Real,two_dimensional> >& positions) {
       for(auto point : positions) {
@@ -32,7 +38,7 @@ public:
         points_.push_back(point.x);
         points_.push_back(point.y);
         points_.push_back(point.z);
-        
+
         colors_.push_back(0.0);
         colors_.push_back(0.0);
         colors_.push_back(1.0);
