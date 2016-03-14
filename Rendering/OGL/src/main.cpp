@@ -6,6 +6,7 @@
 #include "visualizer.h"
 #include "distributor.h"
 #include "particles.h"
+#include "overlay.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -16,15 +17,18 @@ int main(int argc, char *argv[]) {
     Visualizer<float,three_dimensional> visualizer{parameters};
     Particles particles;
     Container container{static_cast<AABB<float, three_dimensional>>(parameters.boundary_) };
+    Overlay<float, three_dimensional> overlay{parameters, visualizer.screen_pixel_dimensions()};
 
     visualizer.add_drawable(particles);
     visualizer.add_drawable(container);
+    visualizer.add_drawable(overlay);
 
     std::future<void> compute_future;
 
     while(parameters.simulation_active()) {
       user_input.update();
       visualizer.process_input(user_input);
+      overlay.process_input(user_input);
 
       // Sync compute and render processes if neccessary
       if(Utility::is_ready(compute_future) && parameters.compute_active()) {

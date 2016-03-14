@@ -147,6 +147,14 @@ public:
     return gravity_;
   }
 
+  void increase_gravity() {
+    gravity_ += 0.5;
+  }
+
+  void decrease_gravity() {
+    gravity_ -= 0.5;
+  }
+
   /**
     @return particle radius
   **/
@@ -176,6 +184,14 @@ public:
     return rest_density_;
   }
 
+  void increase_rest_density() {
+    rest_density_ += 50.0;
+  }
+
+  void decrease_rest_density() {
+    rest_density_ -=50.0;
+  }
+
   Real lambda_epsilon() const {
     return lambda_epsilon_;
   }
@@ -194,6 +210,14 @@ public:
 
   Real visc_c() const {
     return visc_c_;
+  }
+
+  void increase_visc_c() {
+    visc_c_ += 0.01;
+  }
+
+  void decrease_visc_c() {
+    visc_c_ -= 0.01;
   }
 
   bool simulation_active() const {
@@ -217,6 +241,7 @@ public:
 
 
 //private:
+  // Not private so we boost mpi helpers work
   std::size_t max_particles_local_;
   std::size_t initial_global_particle_count_;
   std::size_t solve_step_count_;

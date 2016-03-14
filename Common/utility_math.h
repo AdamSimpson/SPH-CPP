@@ -1,5 +1,7 @@
 #pragma once
 
+#include <future>
+
 namespace Utility {
 
 template<typename Util_T>
@@ -13,6 +15,15 @@ void clamp_in_place(Util_T& n, const Util_T& lower, const Util_T& upper) {
     n = lower;
   else if(n > upper)
     n = upper;
+}
+
+// Test if future has completed
+template<typename R>
+bool is_ready(std::future<R> const& f) {
+  if(!f.valid()) // future hasn't been assigned yet
+    return true;
+  else
+    return f.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 }
 
 }

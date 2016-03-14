@@ -11,7 +11,7 @@
 Camera::Camera() {
   yaw_ = 0.0f;
   pitch_ = 0.0f;
-  speed_ = 0.01f;
+  speed_ = 0.1f;
   world_position_ = {0.0f, 0.0f, 0.0f};
   relative_front_ = {0.0f, 0.0f, -1.0f};
   relative_up_    = {0.0f, 1.0f, 0.0f};
@@ -39,24 +39,28 @@ void Camera::set_position(glm::vec3 new_position) {
   world_position_ = new_position;
 }
 
-void Camera::move_forward() {
-  world_position_ += speed_ * relative_front_;
+void Camera::set_speed(float max_speed) {
+  speed_ = max_speed;
 }
 
-void Camera::move_back() {
-  world_position_ -= speed_ * relative_front_;
+void Camera::move_forward(float frame_time = 0.016f) {
+  world_position_ += speed_ * frame_time * relative_front_;
 }
 
-void Camera::move_left() {
-  world_position_ += speed_ * glm::normalize(
-                                glm::cross(relative_front_,
-                                           -relative_up_));
+void Camera::move_back(float frame_time = 0.016f) {
+  world_position_ -= speed_ * frame_time * relative_front_;
 }
 
-void Camera::move_right() {
-  world_position_ += speed_ * glm::normalize(
-                                glm::cross(relative_front_,
-                                           relative_up_));
+void Camera::move_left(float frame_time = 0.016f) {
+  world_position_ += speed_ * frame_time * glm::normalize(
+                                             glm::cross(relative_front_,
+                                                        -relative_up_));
+}
+
+void Camera::move_right(float frame_time = 0.016f) {
+  world_position_ += speed_ * frame_time * glm::normalize(
+                                             glm::cross(relative_front_,
+                                                        relative_up_));
 }
 
 void Camera::handle_mouse(int x_rel, int y_rel) {
@@ -83,7 +87,9 @@ glm::mat4& Camera::view_matrix() {
   return this->view_matrix_;
 }
 
-void Camera::update(float aspect_ratio) {
+void Camera::update(float aspect_ratio,
+                    float near_clip,
+                    float far_clip) {
   // Bind UBO
   glBindBuffer(GL_UNIFORM_BUFFER, matricies_UBO_);
 
@@ -94,8 +100,7 @@ void Camera::update(float aspect_ratio) {
 
   // Buffer matrix uniform data
   // 0.78 radians ~ 70 degrees
-  // @todo set near and far cliping planes
-  glm::mat4 projection = glm::infinitePerspective(0.78f, aspect_ratio, 0.1f);
+  glm::mat4 projection = glm::perspective(0.78f, aspect_ratio, 0.1f, 1000.0f);
 
   glBufferSubData(GL_UNIFORM_BUFFER, 0, sizeof(glm::mat4), glm::value_ptr(view_matrix_));
   glBufferSubData(GL_UNIFORM_BUFFER, sizeof(glm::mat4), sizeof(glm::mat4), glm::value_ptr(projection));
@@ -105,6 +110,7 @@ void Camera::update(float aspect_ratio) {
 }
 
 // Process User input
+// @todo to keep FPS independent movement pass in frame time step
 void Camera::process_input(const UserInput& user_input) {
   if(user_input.key_is_pressed("w"))
     this->move_forward();
@@ -117,12 +123,13 @@ void Camera::process_input(const UserInput& user_input) {
 
   this->handle_mouse(user_input.mouse_delta_x(), user_input.mouse_delta_y());
 
+  // Simulate mouse motion with keyboard
   if(user_input.key_is_pressed("up"))
-    this->handle_mouse(0.0f, -1.0f);
+    this->handle_mouse(0.0f, -speed_);
   if(user_input.key_is_pressed("down"))
-    this->handle_mouse(0.0f, 1.0f);
+    this->handle_mouse(0.0f, speed_);
   if(user_input.key_is_pressed("left"))
-    this->handle_mouse(-1.0f, 0.0f);
+    this->handle_mouse(-speed_, 0.0f);
   if(user_input.key_is_pressed("right"))
-    this->handle_mouse(1.0f, 0.0f);
+    this->handle_mouse(speed_, 0.0f);
 }

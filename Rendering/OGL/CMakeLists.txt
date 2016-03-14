@@ -42,4 +42,8 @@ find_package(GLEW REQUIRED)
 include_directories(${GLEW_INCLUDE_DIRS})
 target_link_libraries(sph-renderer ${GLEW_LIBRARIES})
 
+find_package(Freetype REQUIRED)
+include_directories(${FREETYPE_INCLUDE_DIRS})
+target_link_libraries(sph-renderer ${FREETYPE_LIBRARIES})
+
 install(TARGETS sph-renderer DESTINATION bin)

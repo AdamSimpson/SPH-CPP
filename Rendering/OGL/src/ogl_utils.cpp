@@ -10,6 +10,7 @@
 void Utility::check_gl() {
   GLenum err = glGetError();
   if(err != GL_NO_ERROR) {
+    std::cout<<"check_gl failure: "<<err<<std::endl;
     throw std::runtime_error("OGL Failure: " + err);
   }
 }

@@ -59,6 +59,7 @@ public:
     glEnable(GL_CULL_FACE);
     glCullFace(GL_BACK);
     glFrontFace(GL_CW);
+    std::cout<<"OGL Winding Clockwise!\n";
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_TRUE);
@@ -66,12 +67,16 @@ public:
     glDepthRange(0.0f, 1.0f);
     glEnable(GL_DEPTH_CLAMP);
 
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
     // post OGL initilization camera and light initilization
     camera_.init();
     glm::vec3 camera_position{parameters_.boundary_.length() * 0.5f,
                               parameters_.boundary_.height() * 0.5f,
                               parameters_.boundary_.depth() * 3.5f };
     camera_.set_position(camera_position);
+    camera_.set_speed(parameters_.boundary_.length());
     light_.init();
     glm::vec3 light_position{parameters_.boundary_.length() * 1.5f,
                               parameters_.boundary_.height() * 6.5f,
@@ -97,9 +102,15 @@ public:
   }
 
   float aspect_ratio() {
-    int w,h;
-    SDL_GL_GetDrawableSize(window_, &w, &h);
-    return (float)w /(float)h;
+    int width, height;
+    SDL_GL_GetDrawableSize(window_, &width, &height);
+    return (float)width /(float)height;
+  }
+
+  glm::vec2 screen_pixel_dimensions() {
+    int width, height;
+    SDL_GL_GetDrawableSize(window_, &width, &height);
+    return glm::vec2{width, height};
   }
 
   void add_drawable(const Drawable& drawable) {
@@ -107,18 +118,16 @@ public:
   }
 
   void draw_scene() {
-    // Clear background
     glClearColor(0.15, 0.15, 0.15, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    camera_.update(this->aspect_ratio());
+    camera_.update(this->aspect_ratio(), 0.1f, parameters_.boundary_.depth()*1.1f);
     light_.update(camera_.view_matrix());
 
     for(const auto drawable : drawables_) {
       drawable->draw();
     }
 
-    // swaps front and back buffers
     this->display();
   }
 
@@ -137,7 +146,7 @@ public:
 private:
   SDL_Window* window_;
   SDL_GLContext gl_context_;
-  volatile unsigned int sdl_ticks_;
+  unsigned int sdl_ticks_;
   Camera camera_;
   Light light_;
   Parameters<Real,Dim>& parameters_;
