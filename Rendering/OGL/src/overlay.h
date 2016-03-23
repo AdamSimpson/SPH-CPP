@@ -30,6 +30,14 @@ public:
                                  std::bind(&Parameters<Real,Dim>::increase_visc_c, &parameters),
                                  std::bind(&Parameters<Real,Dim>::decrease_visc_c, &parameters));
 
+    this->add_tunable("gamma",   std::bind(&Parameters<Real,Dim>::gamma, &parameters),
+                                 std::bind(&Parameters<Real,Dim>::increase_gamma, &parameters),
+                                 std::bind(&Parameters<Real,Dim>::decrease_gamma, &parameters));
+
+    this->add_tunable("smoothing radius",   std::bind(&Parameters<Real,Dim>::smoothing_radius, &parameters),
+                                            std::bind(&Parameters<Real,Dim>::increase_smoothing_radius, &parameters),
+                                            std::bind(&Parameters<Real,Dim>::decrease_smoothing_radius, &parameters));
+
     selected_tunable_ = "gravity";
   }
 

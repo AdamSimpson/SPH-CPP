@@ -13,7 +13,7 @@ Light::Light() {
   world_position_ = {0.0f, 0.0f, 0.0f, 1.0};
   intensity_ = {0.8, 0.8, 0.8, 1.0};
   intensity_ambient_ = {0.4, 0.4, 0.4, 1.0};
-  attenuation_ = 0.001;
+  attenuation_ = 0.000001;
 }
 
 void Light::init() {

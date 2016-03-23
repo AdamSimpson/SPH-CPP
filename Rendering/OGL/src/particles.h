@@ -14,9 +14,10 @@ public:
   void clear();
 
   template<typename Real, Dimension Dim>
-  void set_particles(const std::vector< Vec<Real,Dim> >& positions) {
+  void set_particles(const std::vector< Vec<Real,Dim> >& positions, float radius) {
     this->clear();
     this->add_particles(positions);
+    radius_ = radius;
   }
 
   template<typename Real>
@@ -65,6 +66,8 @@ private:
 
   std::vector<GLfloat> points_;
   std::vector<GLfloat> colors_;
+
+  float radius_;
 
   void create_buffers();
   void create_program();

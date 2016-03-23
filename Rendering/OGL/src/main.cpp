@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
       // Sync compute and render processes if neccessary
       if(Utility::is_ready(compute_future) && parameters.compute_active()) {
         // sync particles between distributors copy and renderer
-        particles.set_particles(distributor.particle_positions());
+        particles.set_particles(distributor.particle_positions(), parameters.particle_radius()/1.5f);
 
         // launch request for updated compute data asynchronously
         compute_future = std::async(std::launch::async, [&] {

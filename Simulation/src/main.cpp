@@ -19,9 +19,11 @@ int main(int argc, char *argv[]) {
     // Sync initial particle configuration
     distributor.sync_to_renderer(particles);
 
+    int64_t frame = 0;
     // Main time step loop
     while(parameters.simulation_active()) {
-      distributor.sync_from_renderer(parameters);
+      if(frame%2)
+        distributor.sync_from_renderer(parameters);
 
       if(parameters.compute_active()) {
         particles.apply_external_forces(distributor.resident_span());
@@ -60,9 +62,12 @@ int main(int argc, char *argv[]) {
         particles.update_positions(distributor.local_span());
 
         // Needs to be done once per rendered frame(?)
-        distributor.sync_to_renderer(particles);
+        if(frame%2)
+          distributor.sync_to_renderer(particles);
+
+        frame++;
       }
-      
+
     }
 
   } catch(std::exception const& exception) {

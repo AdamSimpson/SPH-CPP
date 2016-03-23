@@ -89,6 +89,7 @@ public:
     std::cout<<"smootihng length: "<<smoothing_radius_<<std::endl;
     std::cout<<"particle count: "<<particle_count<<std::endl;
     std::cout<<"rest mass: "<<rest_mass_<<std::endl;
+    std::cout<<"max speed: "<<max_speed_<<std::endl;
   }
 
   /**
@@ -138,6 +139,14 @@ public:
   **/
   Real smoothing_radius() const {
     return smoothing_radius_;
+  }
+
+  void increase_smoothing_radius() {
+    smoothing_radius_ += 0.1;
+  }
+
+  void decrease_smoothing_radius() {
+    smoothing_radius_ -= 0.1;
   }
 
   /**
@@ -206,6 +215,14 @@ public:
 
   Real gamma() const {
     return gamma_;
+  }
+
+  void increase_gamma() {
+    gamma_ += 100.0;
+  }
+
+  void decrease_gamma() {
+    gamma_ -= 100.0;
   }
 
   Real visc_c() const {

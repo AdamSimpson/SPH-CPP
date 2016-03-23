@@ -32,7 +32,7 @@ template<typename Real, Dimension Dim>
 class Neighbors {
 public:
   Neighbors(const Parameters<Real,Dim>& parameters): parameters_{parameters},
-                                                     bin_spacing_{parameters.smoothing_radius()},
+                                                     bin_spacing_{1.2*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
                                                      bin_dimensions_{static_cast<Vec<std::size_t,Dim>>(ceil(
                                                                                                             (parameters.boundary().extent())
                                                                                                             /bin_spacing_) + static_cast<Real>(2))},
@@ -52,7 +52,7 @@ const NeighborBin& operator[] (const std::size_t index) const {
   Each point is shifted by bin_spacing in each direction
   To account for a 1 block grid boundary. This boundary allows neighbors to easily
   be searched for without worrying about boundary conditions
- 
+
 **/
 std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
   const auto point_shifted = point + bin_spacing_;
@@ -65,7 +65,7 @@ std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
   Each point is shifted by bin_spacing in each direction
   To account for a 1 block grid boundary. This boundary allows neighbors to easily
   be searched for without worrying about boundary conditions
- 
+
 **/
 std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
   const auto point_shifted = point + bin_spacing_;
@@ -98,8 +98,8 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
      Find begin/end bounds of bins
    **/
   void find_bin_bounds(std::size_t particle_count) {
-    auto counting_begin = thrust::make_counting_iterator((std::size_t)0); 
-    auto counting_end = thrust::make_counting_iterator(product(bin_dimensions_)); 
+    auto counting_begin = thrust::make_counting_iterator((std::size_t)0);
+    auto counting_end = thrust::make_counting_iterator(product(bin_dimensions_));
 
     thrust::lower_bound(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count,
                         counting_begin, counting_end,
@@ -154,7 +154,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
   void fill_neighbors(IndexSpan span, const Vec<Real,Dim>* position_stars) {
     //    auto index = calculate_bin_id(Vec<Real,3>{55.0,55.0,55.0});
     //    std::cout<<"index "<<index<<"bins: "<<neighbor_bins_[index].count<<std::endl;
-    
+
     const Real smoothing_radius_squared = parameters_.smoothing_radius() *  parameters_.smoothing_radius();
 
     thrust::counting_iterator<std::size_t> begin(span.begin);

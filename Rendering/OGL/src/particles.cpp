@@ -23,7 +23,6 @@ void Particles::clear() {
 void Particles::draw() const {
   /// Update point and color buffers
 
-  float particle_radius = 0.025f;
   // Set buffer
   glBindBuffer(GL_ARRAY_BUFFER, vbo_points_);
   // Orphan current buffer
@@ -48,7 +47,7 @@ void Particles::draw() const {
   glUseProgram(program_);
 
   // Set radius uniform
-  glUniform1f(sphere_radius_location_, (GLfloat)particle_radius);
+  glUniform1f(sphere_radius_location_, (GLfloat)radius_);
   // Set uniform binding
   glUniformBlockBinding(program_, view_matrices_index_, Camera::binding_index);
   glUniformBlockBinding(program_, light_index_, Light::binding_index);

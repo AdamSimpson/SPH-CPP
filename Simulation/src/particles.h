@@ -27,8 +27,10 @@ public:
                                max_local_count_{parameters.max_particles_local()},
                                neighbors_{parameters},
                                positions_{max_local_count_},
+                               positions_previous_{max_local_count_},
                                position_stars_{max_local_count_},
                                velocities_{max_local_count_},
+                               velocities_previous_{max_local_count_},
                                densities_{max_local_count_},
                                lambdas_{max_local_count_},
                                scratch_{max_local_count_},
@@ -71,8 +73,10 @@ public:
   **/
   void remove(std::size_t count) {
     positions_.pop_back(count);
+    positions_previous_.pop_back(count);
     position_stars_.pop_back(count);
     velocities_.pop_back(count);
+    velocities_previous_.pop_back(count);
     densities_.pop_back(count);
     lambdas_.pop_back(count);
     scratch_.pop_back(count);
@@ -87,8 +91,10 @@ public:
            const Vec<Real,Dim>& velocities) {
 
     positions_.push_back(positions);
+    positions_previous_.push_back(positions);
     position_stars_.push_back(position_stars);
     velocities_.push_back(velocities);
+    velocities_previous_.push_back(velocities);
 
     densities_.push_back(0.0);
     lambdas_.push_back(0.0);
@@ -105,8 +111,10 @@ public:
            std::size_t count) {
 
     positions_.push_back(positions, count);
+    positions_previous_.push_back(positions, count);
     position_stars_.push_back(position_stars, count);
     velocities_.push_back(velocities, count);
+    velocities_previous_.push_back(velocities, count);
 
     densities_.push_back(0.0, count);
     lambdas_.push_back(0.0, count);
@@ -195,6 +203,9 @@ public:
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
       const auto position_p = positions_[p];
       auto position_star_p = position_p + (velocities_[p] * dt);
+//      auto position_star_p = static_cast<Real>(4.0/3.0) * position_p - static_cast<Real>(1.0/3.0) * positions_previous_[p]
+//                             + static_cast<Real>(8.0/9.0) * dt * velocities_[p] - static_cast<Real>(2.0/9.0) * dt * velocities_previous_[p]
+//                             + Vec<Real,Dim>(0.0, -static_cast<Real>(4.0/9.0)*dt*dt * static_cast<Real>(9.8), 0.0);
 
       apply_boundary_conditions(position_star_p,
                                 parameters_.boundary());
@@ -347,17 +358,24 @@ public:
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         const Real mass_p = parameters_.rest_mass();
 
-        const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
-                                         static_cast<Real>(1.0)/static_cast<Real>(substep));
+        const Real stiffness = 1.0; // - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
+                                    //     static_cast<Real>(1.0)/static_cast<Real>(substep));
 
         Vec<Real,Dim> dp{0.0};
+        int num_constraints = 1;
         for(const std::size_t q : neighbors_[p]) {
           const Real mass_q = parameters_.rest_mass();
           dp += mass_q * (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p],
                                                              position_stars_[q]);
-        }
 
-        scratch_[p] = stiffness/parameters_.rest_density() * dp;
+          // Hack to get num_constraints correct
+          const Vec<Real,three_dimensional> r = position_stars_[p] - position_stars_[q];
+          Real r_mag = magnitude(r);
+          if(r_mag < parameters_.smoothing_radius())
+            num_constraints++;
+        }
+        Real SOR = (Real)1.0/(Real)num_constraints;
+        scratch_[p] = stiffness/parameters_.rest_density() * dp * SOR;
       });
   };
 
@@ -380,7 +398,9 @@ public:
     thrust::counting_iterator<std::size_t> end(span.end);
 
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
-        Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p]) / parameters_.time_step()};
+          velocities_previous_[p] = velocities_[p];
+//          Vec<Real,Dim> velocity{(static_cast<Real>(1.5)*position_stars_[p] - static_cast<Real>(2.0)*positions_[p] + static_cast<Real>(0.5)*positions_previous_[p] ) / parameters_.time_step()};
+        Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p])/parameters_.time_step()};
         clamp_in_place(velocity, static_cast<Real>(-1.0)*parameters_.max_speed(), parameters_.max_speed());
         velocities_[p] = velocity;
     });
@@ -391,6 +411,7 @@ public:
     thrust::counting_iterator<std::size_t> end(span.end);
 
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+        positions_previous_[p]  = positions_[p];
         positions_[p] = position_stars_[p];
       });
 
@@ -458,8 +479,10 @@ private:
   Neighbors<Real,Dim> neighbors_;
 
   sim::Array< Vec<Real,Dim> > positions_;
+  sim::Array< Vec<Real,Dim> > positions_previous_;
   sim::Array< Vec<Real,Dim> > position_stars_;
   sim::Array< Vec<Real,Dim> > velocities_;
+  sim::Array< Vec<Real,Dim> > velocities_previous_;
   sim::Array< Real > densities_;
   sim::Array< Real > lambdas_;
 
