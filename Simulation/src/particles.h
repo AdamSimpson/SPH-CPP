@@ -11,6 +11,7 @@
 #include <thrust/partition.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/for_each.h>
+#include <limits>
 
 /**
   Class to handle 2D and 3D SPH particle physics
@@ -220,15 +221,14 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
+    const Real mass = parameters_.rest_mass();
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
-        const Real mass_p = parameters_.rest_mass();
         // Own contribution to density
-        Real density = mass_p * W_0;
+        Real density = mass * W_0;
 
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
           const Real r_mag = magnitude(position_stars_[p] - position_stars_[q]);
-          density += mass_q * W(r_mag);
+          density += mass * W(r_mag);
         }
         densities_[p] = density;
     });
@@ -255,19 +255,15 @@ public:
       Real sum_C = 0.0;
       Vec<Real,Dim> sum_gradient{0.0};
       for(const std::size_t q : neighbors_[p]) {
-        const Real mass_q = parameters_.rest_mass();
         const Real density_0 = parameters_.rest_density();
         // Can pull density_0 down below so it's not in inner loop
-        const Vec<Real,Dim> gradient = -mass_q / density_0 * Del_W(position_stars_[p], position_stars_[q]);
+        const Vec<Real,Dim> gradient = (Real)-1.0 / density_0 * Del_W(position_stars_[p], position_stars_[q]);
         sum_gradient -= gradient;
         // Add k = j contribution
         sum_C += magnitude_squared(gradient);
       }
       // k = i contribution
       sum_C += magnitude_squared(sum_gradient);
-
-      // Having particles of different mass would require 1/m_i term
-      // http://mmacklin.com/EG2015PBD.pdf
 
       lambdas_[p] = -C_p/(sum_C + parameters_.lambda_epsilon());
       });
@@ -283,8 +279,7 @@ public:
       // surface tension constraint
       Vec<Real,Dim> color{0.0};
       for(const std::size_t q : neighbors_[p]) {
-        const Real mass_q = parameters_.rest_mass();
-        color += Del_W(position_stars_[p],  position_stars_[q]) * mass_q / densities_[q];
+        color += Del_W(position_stars_[p],  position_stars_[q]) / densities_[q];
       }
       if(magnitude(color) < 0.0001)
         color = Vec<Real,Dim>{0.0};
@@ -312,8 +307,7 @@ public:
       Vec<Real,Dim> sum_gradient{0.0};
 
       for(const std::size_t q : neighbors_[p]) {
-        const Real mass_q = parameters_.rest_mass();
-        const Vec<Real,Dim> gradient = mass_q * scratch_scalar_[q] / densities_[q] * Del_W(position_stars_[p], position_stars_[q]);
+        const Vec<Real,Dim> gradient = scratch_scalar_[q] / densities_[q] * Del_W(position_stars_[p], position_stars_[q]);
         sum_gradient += gradient;
         // Add k = j contribution
         sum_C += magnitude_squared(gradient);
@@ -333,15 +327,12 @@ public:
     thrust::counting_iterator<std::size_t> end(span.end);
 
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
-        const Real mass_p = parameters_.rest_mass();
-
         const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
                                          static_cast<Real>(1.0)/static_cast<Real>(substep));
 
         Vec<Real,Dim> dp{0.0};
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
-          dp += mass_q * scratch_scalar_[q] / densities_[q] * (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p],
+          dp += scratch_scalar_[q] / densities_[q] * (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p],
                                                              position_stars_[q]);
         }
 
@@ -355,27 +346,13 @@ public:
     thrust::counting_iterator<std::size_t> begin(span.begin);
     thrust::counting_iterator<std::size_t> end(span.end);
 
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
-        const Real mass_p = parameters_.rest_mass();
-
-        const Real stiffness = 1.0; // - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
-                                    //     static_cast<Real>(1.0)/static_cast<Real>(substep));
-
+    thrust::for_each(thrust::device, begin, end, [&] (std::size_t p) {
         Vec<Real,Dim> dp{0.0};
-        int num_constraints = 1;
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
-          dp += mass_q * (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p],
-                                                             position_stars_[q]);
+          dp += (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p], position_stars_[q]);
 
-          // Hack to get num_constraints correct
-          const Vec<Real,three_dimensional> r = position_stars_[p] - position_stars_[q];
-          Real r_mag = magnitude(r);
-          if(r_mag < parameters_.smoothing_radius())
-            num_constraints++;
         }
-        Real SOR = (Real)1.0/(Real)num_constraints;
-        scratch_[p] = stiffness/parameters_.rest_density() * dp * SOR;
+        scratch_[p] = (Real)1.0/parameters_.rest_density() * dp;
       });
   };
 
@@ -401,7 +378,12 @@ public:
           velocities_previous_[p] = velocities_[p];
 //          Vec<Real,Dim> velocity{(static_cast<Real>(1.5)*position_stars_[p] - static_cast<Real>(2.0)*positions_[p] + static_cast<Real>(0.5)*positions_previous_[p] ) / parameters_.time_step()};
         Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p])/parameters_.time_step()};
+        // Clamp to maximum velocity
         clamp_in_place(velocity, static_cast<Real>(-1.0)*parameters_.max_speed(), parameters_.max_speed());
+        // Clamp to 0 if velocity under threshold
+        if(magnitude_squared(velocity) < 0.000001 * parameters_.max_speed())
+            velocity = Vec<Real,Dim>{0.0};
+
         velocities_[p] = velocity;
     });
   }
@@ -427,26 +409,23 @@ public:
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> color{0.0};
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
-          color += Del_W(position_stars_[p],  position_stars_[q]) * mass_q / densities_[q];
+          color += Del_W(position_stars_[p],  position_stars_[q]) / densities_[q];
         }
         scratch_[p] = parameters_.smoothing_radius() * color;
       });
 
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> surface_tension_force{0.0};
-        const Real mass_p = parameters_.rest_mass();
 
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
           const Vec<Real,Dim> r = position_stars_[p] - position_stars_[q];
 
           Real r_mag = magnitude(r);
           if(r_mag < parameters_.smoothing_radius()*0.001)
             r_mag = parameters_.smoothing_radius()*0.001;
 
-          const Vec<Real,Dim> cohesion_force{-parameters_.gamma() * mass_p * mass_q * C(r_mag) * r/r_mag};
-          const Vec<Real,Dim> curvature_force{-parameters_.gamma() * mass_p * (scratch_[p] - scratch_[q])};
+          const Vec<Real,Dim> cohesion_force{-parameters_.gamma() * C(r_mag) * r/r_mag};
+          const Vec<Real,Dim> curvature_force{-parameters_.gamma() * (scratch_[p] - scratch_[q])};
           const Real K = 2.0*parameters_.rest_density() / (densities_[p] + densities_[q]);
           surface_tension_force += K * (cohesion_force + curvature_force);
         }
@@ -465,11 +444,50 @@ public:
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
         Vec<Real,Dim> dv{0.0};
         for(const std::size_t q : neighbors_[p]) {
-          const Real mass_q = parameters_.rest_mass();
           const Real r_mag = magnitude(position_stars_[p] - position_stars_[q]);
-          dv += (velocities_[q] - velocities_[p]) * W(r_mag) * mass_q / densities_[q];
+          dv += (velocities_[q] - velocities_[p]) * W(r_mag) / densities_[q];
         }
         velocities_[p] += parameters_.visc_c() * dv;
+      });
+  }
+
+  void compute_vorticity(IndexSpan span) {
+    const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
+
+    thrust::counting_iterator<std::size_t> begin(span.begin);
+    thrust::counting_iterator<std::size_t> end(span.end);
+
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+        Vec<Real,Dim> vorticity{0.0};
+
+        for(const std::size_t q : neighbors_[p]) {
+          const auto del = Del_W(position_stars_[p], position_stars_[q]);
+          const auto v_diff = velocities_[q] - velocities_[p];
+          vorticity += cross(v_diff, del);
+        }
+
+        scratch_[p] = vorticity;
+      });
+  }
+
+  void apply_vorticity(IndexSpan span) {
+    const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
+
+    thrust::counting_iterator<std::size_t> begin(span.begin);
+    thrust::counting_iterator<std::size_t> end(span.end);
+
+    // Scratch contains vorticity
+    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+        Vec<Real,Dim> eta{0.0};
+
+        for(const std::size_t q : neighbors_[p]) {
+          const auto del = Del_W(position_stars_[p], position_stars_[q]);
+          const Real vorticity_magnitude = magnitude(scratch_[q]);
+          eta += vorticity_magnitude * del;
+        }
+
+        const auto N = eta / (magnitude(eta) + std::numeric_limits<Real>::epsilon());
+        velocities_[p] += cross(N, scratch_[p]) * parameters_.vorticity_coef() * parameters_.time_step();
       });
   }
 

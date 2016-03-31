@@ -503,6 +503,20 @@ T product(const Vec<T,n>& vec) {
 }
 
 /**
+  @brief vector cross product
+**/
+template<typename T>
+Vec<T,three_dimensional> cross(const Vec<T, three_dimensional>& lhs,
+                               const Vec<T, three_dimensional>& rhs) {
+  Vec<T,three_dimensional> cross;
+  cross.x = lhs.y * rhs.z - lhs.z * rhs.y;
+  cross.y = lhs.z * rhs.x - lhs.x * rhs.z;
+  cross.z = lhs.x * rhs.y - lhs.y * rhs.x;
+
+  return cross;
+}
+
+/**
   @brief component wise clamp
   @return newly constructed clamped vector
 **/

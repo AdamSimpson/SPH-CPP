@@ -56,8 +56,9 @@ int main(int argc, char *argv[]) {
 
         particles.apply_viscosity(distributor.local_span());
 
-        // vorticity
-        // vorticity confinement
+        particles.compute_vorticity(distributor.local_span());
+
+        particles.apply_vorticity(distributor.local_span());
 
         particles.update_positions(distributor.local_span());
 

@@ -3,6 +3,7 @@
 #include "dimension.h"
 #include "vec.h"
 #include <math.h>
+#include <limits>
 
 /**
    Empty generic template class
@@ -114,7 +115,7 @@ class Del_Spikey<Real, three_dimensional> {
 public:
   Del_Spikey(const Real smoothing_radius): h_{smoothing_radius},
                                            norm_{static_cast<Real>(-45.0/(M_PI*pow(h_, 6.0)))},
-                                           r_min_(h_*0.0001) {};
+                                           r_epsilon_(std::numeric_limits<Real>::epsilon()) {};
 
   Vec<Real,three_dimensional> operator()(const Vec<Real,three_dimensional>& vec_p,
                                          const Vec<Real,three_dimensional>& vec_q) const {
@@ -123,16 +124,13 @@ public:
     if(r_mag > h_)
       return Vec<Real,three_dimensional>{0.0};
 
-    if(r_mag < r_min_)
-      r_mag = r_min_;
-
-    return norm_ * (h_ - r_mag) * (h_ - r_mag)  * r / r_mag;
+    return norm_ * (h_ - r_mag) * (h_ - r_mag)  * r / (r_mag + r_epsilon_);
   };
 
 private:
-  Real h_;
-  Real norm_;
-  Real r_min_;
+  const Real h_;
+  const Real norm_;
+  const Real r_epsilon_;
 };
 
 /**
@@ -143,17 +141,17 @@ class Del_Spikey<Real, two_dimensional> {
 public:
   Del_Spikey(const Real smoothing_radius): h_{smoothing_radius},
                                            norm_{static_cast<Real>(-30.0/(M_PI*pow(h_, 5.0)))},
-                                           r_min_(h_*0.0001) {};
+                                           r_min_(std::numeric_limits<Real>::epsilon()) {};
 
   Vec<Real,two_dimensional> operator()(const Vec<Real,two_dimensional>& vec_p,
                                        const Vec<Real,two_dimensional>& vec_q) const {
     const Vec<Real,two_dimensional> r = vec_p - vec_q;
     Real r_mag = magnitude(r);
-    if(r_mag > h_)
+    if(r_mag > h_ || r_mag < r_min_)
       return Vec<Real, two_dimensional>{0.0};
 
-    if(r_mag < r_min_)
-      r_mag = r_min_;
+//    if(r_mag < r_min_)
+//      r_mag = r_min_;
 
     return norm_ * (h_ - r_mag) * (h_ - r_mag) *  r / r_mag;
   };

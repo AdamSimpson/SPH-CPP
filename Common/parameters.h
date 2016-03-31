@@ -60,6 +60,7 @@ public:
     lambda_epsilon_ = property_tree.get<Real>("PhysicalParameters.lambda_epsilon");
     k_stiff_ = property_tree.get<Real>("PhysicalParameters.k_stiff");
     rest_density_ = property_tree.get<Real>("PhysicalParameters.density");
+    vorticity_coef_ = property_tree.get<Real>("PhysicalParameters.vorticity_coef");
 
     boundary_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.min"));
     boundary_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.max"));
@@ -74,12 +75,14 @@ public:
   void derive_from_input() {
     particle_rest_spacing_ = pow(initial_fluid_.volume() / initial_global_particle_count_, 1.0/Dim);
     particle_radius_ = particle_rest_spacing_/2.0;
-    smoothing_radius_ = 1.6*particle_rest_spacing_;
+    smoothing_radius_ = 1.8*particle_rest_spacing_;
 
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(initial_fluid_, particle_rest_spacing_);
     std::size_t particle_count = product(particle_counts);
     Real mass_fudge = 1.0;
-    rest_mass_ = mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
+    rest_mass_ = 1.0; //mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
+    Real particle_volume = /*4.0/3.0 * M_PI **/ pow(particle_rest_spacing_ , 3.0);
+    rest_density_ = rest_mass_ / particle_volume;
 
     std::cout<<"Max speed must be reset if smoothing radius changes\n";
     max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_; // CFL
@@ -89,6 +92,7 @@ public:
     std::cout<<"smootihng length: "<<smoothing_radius_<<std::endl;
     std::cout<<"particle count: "<<particle_count<<std::endl;
     std::cout<<"rest mass: "<<rest_mass_<<std::endl;
+    std::cout<<"density: "<<rest_density_<<std::endl;
     std::cout<<"max speed: "<<max_speed_<<std::endl;
   }
 
@@ -237,6 +241,10 @@ public:
     visc_c_ -= 0.01;
   }
 
+  Real vorticity_coef() const {
+    return vorticity_coef_;
+  }
+
   bool simulation_active() const {
     return simulation_mode_ != Mode::EXIT;
   }
@@ -274,6 +282,7 @@ public:
   Real visc_c_;
   Real time_step_;
   Real max_speed_;
+  Real vorticity_coef_;
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
   Mode simulation_mode_;

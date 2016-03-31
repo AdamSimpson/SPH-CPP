@@ -28,6 +28,7 @@ void serialize(Archive & ar, Parameters<Real,Dim> & params, const unsigned int v
   ar & params.visc_c_;
   ar & params.time_step_;
   ar & params.max_speed_;
+  ar & params.vorticity_coef_;
   ar & params.boundary_;
   ar & params.initial_fluid_;
   ar & params.simulation_mode_;
