@@ -30,8 +30,9 @@ int main(int argc, char *argv[]) {
         particles.predict_positions(distributor.resident_span());
 
         // @todo Balance nodes
+        // @todo get local/resident spans correct in all of below functions
 
-        //      distributor_.domain_sync();
+        distributor.domain_sync(particles);
 
         particles.find_neighbors(distributor.local_span(),
                                  distributor.resident_span());
@@ -47,20 +48,19 @@ int main(int argc, char *argv[]) {
           // update position star halos?
           //        particles_.compute_surface_lambdas(distributor_.local_span());
           //        particles_.compute_surface_dps(distributor_.local_span(), sub);
-          //        particles_.update_position_stars(distributor_.local_span());
         }
 
         particles.update_velocities(distributor.local_span());
 
-        particles.apply_surface_tension(distributor.local_span());
+        particles.apply_surface_tension(distributor.resident_span());
 
-        particles.apply_viscosity(distributor.local_span());
+        particles.apply_viscosity(distributor.resident_span());
 
-        particles.compute_vorticity(distributor.local_span());
+        particles.compute_vorticity(distributor.resident_span());
 
-        particles.apply_vorticity(distributor.local_span());
+        particles.apply_vorticity(distributor.resident_span());
 
-        particles.update_positions(distributor.local_span());
+        particles.update_positions(distributor.resident_span());
 
         // Needs to be done once per rendered frame(?)
         if(frame%2)

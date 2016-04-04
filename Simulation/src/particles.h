@@ -97,10 +97,10 @@ public:
     velocities_.push_back(velocities);
     velocities_previous_.push_back(velocities);
 
-    densities_.push_back(0.0);
-    lambdas_.push_back(0.0);
+    densities_.push_back((Real)0.0);
+    lambdas_.push_back((Real)0.0);
     scratch_.push_back(Vec<Real,Dim>{0.0});
-    scratch_scalar_.push_back(0.0);
+    scratch_scalar_.push_back((Real)0.0);
   }
 
   /**
@@ -117,10 +117,10 @@ public:
     velocities_.push_back(velocities, count);
     velocities_previous_.push_back(velocities, count);
 
-    densities_.push_back(0.0, count);
-    lambdas_.push_back(0.0, count);
+    densities_.push_back((Real)0.0, count);
+    lambdas_.push_back((Real)0.0, count);
     scratch_.push_back(Vec<Real,Dim>{0.0}, count);
-    scratch_scalar_.push_back(0.0, count);
+    scratch_scalar_.push_back((Real)0.0, count);
   }
 
   /**

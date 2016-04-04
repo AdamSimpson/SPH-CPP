@@ -32,7 +32,7 @@ template<typename Real, Dimension Dim>
 class Neighbors {
 public:
   Neighbors(const Parameters<Real,Dim>& parameters): parameters_{parameters},
-                                                     bin_spacing_{1.2*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
+                                                     bin_spacing_{(Real)1.2*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
                                                      bin_dimensions_{static_cast<Vec<std::size_t,Dim>>(ceil(
                                                                                                             (parameters.boundary().extent())
                                                                                                             /bin_spacing_) + static_cast<Real>(2))},
