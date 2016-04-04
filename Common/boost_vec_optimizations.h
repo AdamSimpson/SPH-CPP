@@ -11,9 +11,11 @@ namespace boost { namespace serialization {
 template<class Archive, typename Real, Dimension Dim>
 void serialize(Archive & ar, Vec<Real,Dim> & vec, const unsigned int version)
 {
-    for(int i=0; i<Dim; ++i)
+    for(int i=0; i<Dim; ++i) {
       ar & vec[i];
+    }
 } }}
+
 
 /**
   BOOST_IS_MPI_DATATYPE(Vec<Real,Dim>)
