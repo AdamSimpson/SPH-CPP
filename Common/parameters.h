@@ -286,7 +286,6 @@ public:
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
   Mode simulation_mode_;
-
 };
 
 /**

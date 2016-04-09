@@ -13,6 +13,7 @@
 #include <thrust/partition.h>
 #include "parameters.h"
 #include "boost_mpi_optimizations.h"
+#include "mpi++.h"
 
 /***
   The distributor is responsible for all domain-to-domain communication as
