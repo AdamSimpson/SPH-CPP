@@ -1,6 +1,6 @@
 #pragma once
 
-#include <boost/mpi.hpp>
+//#include <boost/mpi.hpp>
 #include <utility>
 #include <stdexcept>
 #include <string>
@@ -12,7 +12,7 @@
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/partition.h>
 #include "parameters.h"
-#include "boost_mpi_optimizations.h"
+//#include "boost_mpi_optimizations.h"
 #include "mpi++.h"
 
 /***
@@ -50,14 +50,17 @@ public:
   typedef thrust::tuple< const Vec<Real,Dim>&, const Vec<Real,Dim>&, const Vec<Real,Dim>& > Tuple;
   typedef thrust::zip_iterator<Tuple> ZippedTuple;
 
-  Distributor() : environment_{false},
-                  comm_compute_{comm_world_.split(1)},
+  Distributor() :
+                  comm_compute_{1},
                   domain_{0.0, 0.0},
                   resident_count_{0},
                   edge_count_{0},
                   halo_count_{0},
                   receive_left_index_{0},
-                  receive_right_index_{0} {}
+                  receive_right_index_{0} {
+
+                    sim::mpi::create_mpi_types<Real,Dim>(MPI_VEC_, MPI_PARAMETERS_);
+                  }
 
   ~Distributor()                             = default;
   Distributor(const Distributor&)            = delete;
@@ -128,13 +131,6 @@ public:
       right = comm_compute_.rank() + 1;
 
     return right;
-  }
-
-  /**
-    @brief getter for compute  MPI communicator
-  **/
-  boost::mpi::communicator compute_comm() const {
-    return comm_compute_;
   }
 
   /**
@@ -212,7 +208,7 @@ public:
   **/
   std::size_t global_resident_count() const {
     std::size_t global_count = 0;
-    boost::mpi::all_reduce(comm_compute_, this->resident_count(), global_count, std::plus<std::size_t>());
+    comm_compute_.all_reduce(&this->resident_count(), &global_count, MPI_UINT64_T, MPI_SUM);
     return global_count;
   }
 
@@ -270,9 +266,9 @@ public:
   }
 
 private:
-  boost::mpi::environment environment_;
-  boost::mpi::communicator comm_world_;          /**< world communicator **/
-  const boost::mpi::communicator comm_compute_;  /**< compute subset of simulation **/
+  const sim::mpi::Environment environment_;
+  const sim::mpi::Communicator comm_world_;          /**< world communicator **/
+  const sim::mpi::Communicator comm_compute_;  /**< compute subset of simulation **/
   Vec<Real,2>  domain_;                              /** x coordinate of domain domain range **/
   Real edge_width_;
 
@@ -282,7 +278,10 @@ private:
   std::size_t receive_left_index_;
   std::size_t receive_right_index_;
 
-  boost::mpi::request requests_[12];
+  MPI_Request requests_[12];
+
+  MPI_Datatype MPI_VEC_;
+  MPI_Datatype MPI_PARAMETERS_;
 
   /**
     Invalidates halo particles
@@ -352,56 +351,58 @@ private:
     std::cout<<"rank "<<comm_compute_.rank()<<"receive indices: "<<receive_left_index_<<", "<<receive_right_index_<<"send indices: "<<send_left_index<<", "<<send_right_index<<std::endl;
 
     // Boost MPI doesn't support MPI_PROC_NULL...cool
-    requests_[0] = comm_compute_.irecv(this->domain_to_left(), 0,
-                                       &(particles.position_stars()[receive_left_index_]), max_recv_per_side);
-    requests_[1] = comm_compute_.irecv(this->domain_to_left(), 1,
-                                       &(particles.positions()[receive_left_index_]), max_recv_per_side);
-    requests_[2] = comm_compute_.irecv(this->domain_to_left(), 2,
-                                       &(particles.velocities()[receive_left_index_]), max_recv_per_side);
+    requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
+                                       &(particles.position_stars()[receive_left_index_]), max_recv_per_side, MPI_VEC_);
+    requests_[1] = comm_compute_.i_recv(this->domain_to_left(), 1,
+                                       &(particles.positions()[receive_left_index_]), max_recv_per_side, MPI_VEC_);
+    requests_[2] = comm_compute_.i_recv(this->domain_to_left(), 2,
+                                       &(particles.velocities()[receive_left_index_]), max_recv_per_side, MPI_VEC_);
 
-    requests_[3] = comm_compute_.irecv(this->domain_to_right(), 3,
-                                       &(particles.position_stars()[receive_right_index_]), max_recv_per_side);
-    requests_[4] = comm_compute_.irecv(this->domain_to_right(), 4,
-                                       &(particles.positions()[receive_right_index_]), max_recv_per_side);
-    requests_[5] = comm_compute_.irecv(this->domain_to_right(), 5,
-                                       &(particles.velocities()[receive_right_index_]), max_recv_per_side);
+    requests_[3] = comm_compute_.i_recv(this->domain_to_right(), 3,
+                                       &(particles.position_stars()[receive_right_index_]), max_recv_per_side, MPI_VEC_);
+    requests_[4] = comm_compute_.i_recv(this->domain_to_right(), 4,
+                                       &(particles.positions()[receive_right_index_]), max_recv_per_side, MPI_VEC_);
+    requests_[5] = comm_compute_.i_recv(this->domain_to_right(), 5,
+                                       &(particles.velocities()[receive_right_index_]), max_recv_per_side, MPI_VEC_);
 
-    requests_[6] = comm_compute_.isend(this->domain_to_left(), 3,
-                                       &(particles.position_stars()[send_left_index]), oob_left_count);
-    requests_[7] = comm_compute_.isend(this->domain_to_left(), 4,
-                                       &(particles.positions()[send_left_index]), oob_left_count);
-    requests_[8] = comm_compute_.isend(this->domain_to_left(), 5,
-                                       &(particles.velocities()[send_left_index]), oob_left_count);
+    requests_[6] = comm_compute_.i_send(this->domain_to_left(), 3,
+                                       &(particles.position_stars()[send_left_index]), oob_left_count, MPI_VEC_);
+    requests_[7] = comm_compute_.i_send(this->domain_to_left(), 4,
+                                       &(particles.positions()[send_left_index]), oob_left_count, MPI_VEC_);
+    requests_[8] = comm_compute_.i_send(this->domain_to_left(), 5,
+                                       &(particles.velocities()[send_left_index]), oob_left_count, MPI_VEC_);
 
-    requests_[9]  = comm_compute_.isend(this->domain_to_right(), 0,
-                                        &(particles.position_stars()[send_right_index]), oob_right_count);
-    requests_[10] = comm_compute_.isend(this->domain_to_right(), 1,
-                                        &(particles.positions()[send_right_index]), oob_right_count);
-    requests_[11] = comm_compute_.isend(this->domain_to_right(), 2,
-                                        &(particles.velocities()[send_right_index]), oob_right_count);
+    requests_[9]  = comm_compute_.i_send(this->domain_to_right(), 0,
+                                        &(particles.position_stars()[send_right_index]), oob_right_count, MPI_VEC_);
+    requests_[10] = comm_compute_.i_send(this->domain_to_right(), 1,
+                                        &(particles.positions()[send_right_index]), oob_right_count, MPI_VEC_);
+    requests_[11] = comm_compute_.i_send(this->domain_to_right(), 2,
+                                        &(particles.velocities()[send_right_index]), oob_right_count, MPI_VEC_);
 
    std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count<<" to rank "<<this->domain_to_left()<<"and"<<oob_right_count<<" to rank "<<this->domain_to_right()<<std::endl;
 
   }
 
   void finalize_oob_exchange(Particles<Real,Dim> & particles) {
-    boost::mpi::status statuses[12];
-    boost::mpi::wait_all(requests_, requests_ + 12, statuses);
+    MPI_Status statuses[12];
+    sim::mpi::wait_all(requests_, 12, statuses);
 
-     for(int i=0; i<2; i++) {
-       if(statuses[i].error()) {
-         std::cout<<"rank "<<comm_compute_.rank()<<"ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
-       }
-     }
+//     for(int i=0; i<2; i++) {
+//       if(statuses[i].error()) {
+//         std::cout<<"rank "<<comm_compute_.rank()<<"ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
+//       }
+//     }
 
-     comm_compute_.barrier();
-     exit(1);
+//     comm_compute_.barrier();
+//     exit(1);
 
     // copy recieved left/right to correct position in particle array
-    const auto received_left_count  = *statuses[0].count<Vec<Real,Dim>>();
-    const auto received_right_count = *statuses[3].count<Vec<Real,Dim>>();
-    const auto sent_count = *statuses[6].count<Vec<Real,Dim>>()
-                          + *statuses[9].count<Vec<Real,Dim>>();
+    int received_left_count, received_right_count, sent_left_count, sent_right_count;
+    MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
+    MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
+    MPI_Get_count(&statuses[6], MPI_VEC_, &sent_left_count);
+    MPI_Get_count(&statuses[9], MPI_VEC_, &sent_right_count);
+    const int sent_count = sent_left_count + sent_right_count;
 /*
    std::cout<<"rank : "<<comm_compute_.rank()<<" "<<*statuses[6].count<Vec<Real,Dim>>()<<"Sent left, "<<*statuses[9].count<Vec<Real,Dim>>()<<" send right, Receiving "<<received_left_count<<" from left "<<received_right_count<<" from right"<<std::endl;
 
@@ -470,50 +471,54 @@ private:
     const std::size_t send_left_index = edge_begin - begin;
     const std::size_t send_right_index = edge_right_begin - begin;
 
-    requests_[0] = comm_compute_.irecv(this->domain_to_left(), 0,
-                                       &particles.position_stars()[receive_left_index_], max_recv_per_side);
-    requests_[1] = comm_compute_.irecv(this->domain_to_left(), 1,
-                                       &particles.positions()[receive_left_index_], max_recv_per_side);
-    requests_[2] = comm_compute_.irecv(this->domain_to_left(), 2,
-                                       &particles.velocities()[receive_left_index_], max_recv_per_side);
+    requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
+                                       &particles.position_stars()[receive_left_index_], max_recv_per_side, MPI_VEC_);
+    requests_[1] = comm_compute_.i_recv(this->domain_to_left(), 1,
+                                       &particles.positions()[receive_left_index_], max_recv_per_side, MPI_VEC_);
+    requests_[2] = comm_compute_.i_recv(this->domain_to_left(), 2,
+                                       &particles.velocities()[receive_left_index_], max_recv_per_side, MPI_VEC_);
 
-    requests_[3] = comm_compute_.irecv(this->domain_to_right(), 3,
-                                       &particles.position_stars()[receive_right_index_], max_recv_per_side);
-    requests_[4] = comm_compute_.irecv(this->domain_to_right(), 4,
-                                       &particles.positions()[receive_right_index_], max_recv_per_side);
-    requests_[5] = comm_compute_.irecv(this->domain_to_right(), 5,
-                                       &particles.velocities()[receive_right_index_], max_recv_per_side);
+    requests_[3] = comm_compute_.i_recv(this->domain_to_right(), 3,
+                                       &particles.position_stars()[receive_right_index_], max_recv_per_side, MPI_VEC_);
+    requests_[4] = comm_compute_.i_recv(this->domain_to_right(), 4,
+                                       &particles.positions()[receive_right_index_], max_recv_per_side, MPI_VEC_);
+    requests_[5] = comm_compute_.i_recv(this->domain_to_right(), 5,
+                                       &particles.velocities()[receive_right_index_], max_recv_per_side, MPI_VEC_);
 
-    requests_[6] = comm_compute_.isend(this->domain_to_left(), 3,
-                                       &particles.position_stars()[send_left_index], edge_left_count);
-    requests_[7] = comm_compute_.isend(this->domain_to_left(), 4,
-                                       &particles.positions()[send_left_index], edge_left_count);
-    requests_[8] = comm_compute_.isend(this->domain_to_left(), 5,
-                                       &particles.velocities()[send_left_index], edge_left_count);
+    requests_[6] = comm_compute_.i_send(this->domain_to_left(), 3,
+                                       &particles.position_stars()[send_left_index], edge_left_count, MPI_VEC_);
+    requests_[7] = comm_compute_.i_send(this->domain_to_left(), 4,
+                                       &particles.positions()[send_left_index], edge_left_count, MPI_VEC_);
+    requests_[8] = comm_compute_.i_send(this->domain_to_left(), 5,
+                                       &particles.velocities()[send_left_index], edge_left_count, MPI_VEC_);
 
-    requests_[9]  = comm_compute_.isend(this->domain_to_right(), 0,
-                                        &particles.position_stars()[send_right_index], edge_right_count);
-    requests_[10] = comm_compute_.isend(this->domain_to_right(), 1,
-                                        &particles.positions()[send_right_index], edge_right_count);
-    requests_[11] = comm_compute_.isend(this->domain_to_right(), 2,
-                                        &particles.velocities()[send_right_index], edge_right_count);
+    requests_[9]  = comm_compute_.i_send(this->domain_to_right(), 0,
+                                        &particles.position_stars()[send_right_index], edge_right_count, MPI_VEC_);
+    requests_[10] = comm_compute_.i_send(this->domain_to_right(), 1,
+                                        &particles.positions()[send_right_index], edge_right_count, MPI_VEC_);
+    requests_[11] = comm_compute_.i_send(this->domain_to_right(), 2,
+                                        &particles.velocities()[send_right_index], edge_right_count, MPI_VEC_);
 }
 
   void finalize_halo_exchange(Particles<Real,Dim> & particles) {
-    boost::mpi::status statuses[12];
-    boost::mpi::wait_all(requests_, requests_ + 12, statuses);
+    MPI_Status statuses[12];
+    sim::mpi::wait_all(requests_, 12, statuses);
 
+/*
     for(int i=0; i<12; i++) {
       if(statuses[i].error()) {
         std::cout<<"HALO ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
         exit(1);
       }
     }
-
+*/
     // copy recieved left/right to correct position in particle array
-    const auto received_left_count  = *statuses[0].count<Vec<Real,Dim>>();
-    const auto received_right_count = *statuses[3].count<Vec<Real,Dim>>();
-    const auto sent_count = *statuses[6].count<Vec<Real,Dim>>() + *statuses[9].count<Vec<Real,Dim>>();
+    int received_left_count, received_right_count, sent_left_count, sent_right_count;
+    MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
+    MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
+    MPI_Get_count(&statuses[6], MPI_VEC_, &sent_left_count);
+    MPI_Get_count(&statuses[9], MPI_VEC_, &sent_right_count);
+    const int sent_count = sent_left_count + sent_right_count;
 
     // Left halo doesn't need to be copied but does need to incriment particle counts
     this->add_halo_particles(particles,
@@ -538,15 +543,21 @@ public:
     // Gather number of particle coordinates that will be sent to render process
     const int particle_count = (int)resident_count_;
 
-    boost::mpi::gather(comm_world_, particle_count, 0);
+    std::cout<<"Gather started on compute, sending:"<<particle_count<<std::endl;
+
+    comm_world_.gather(&particle_count, MPI_INT, 0);
+
+    std::cout<<"Gather completed on compute\n";
 
     // Gather particle coordinates on render process
-    boost::mpi::gatherv(comm_world_, particles.positions().data(), particle_count, 0);
+    comm_world_.gatherv(particles.positions().data(), particle_count, MPI_VEC_, 0);
+
+    std::cout<<"Gatherv completed on compute\n";
   }
 
   // Receive updated parameters from render node
   void sync_from_renderer(Parameters<Real,Dim> & parameters) {
-    boost::mpi::broadcast(comm_world_, parameters ,0);
+    comm_world_.broadcast(&parameters, MPI_PARAMETERS_, 0);
   }
 
 };

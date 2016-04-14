@@ -26,7 +26,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Common)
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
-target_link_libraries(sph ${MPI_CXX_LIBRARIES})
+target_link_libraries(sph ${MPI_C_LIBRARIES})
 
 set(Boost_NO_BOOST_CMAKE TRUE) # Ignore system boost and use module system boost
 find_package(Boost COMPONENTS mpi system filesystem serialization REQUIRED)

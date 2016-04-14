@@ -1,24 +1,25 @@
 #include "dimension.h"
 #include "parameters.h"
-#include <boost/mpi.hpp>
-#include <stdexcept>
 #include "vec.h"
 #include <vector>
 #include "array.h"
-#include "boost_mpi_optimizations.h"
+#include "mpi++.h"
 
 int main(int argc, char**argv) {
-  boost::mpi::environment env;
-  boost::mpi::communicator comm_world;
+  sim::mpi::Environment env;
+  sim::mpi::Communicator comm_world;
+
+  MPI_Datatype MPI_VEC, MPI_PARAMETERS;
+  sim::mpi::create_mpi_types<float,3>(MPI_VEC, MPI_PARAMETERS);
 
   int rank = comm_world.rank();
-
+/*
   if(rank == 1) {
     sim::Array<Vec<float,3>> send_data{10};
     for(int i=0; i<10; i++)
       send_data.push_back(Vec<float,3>{6.0, 7.0, 8.9});
 
-    comm_world.isend(0, 7, &(send_data[0]), 10);
+    comm_world.i_send(0, 7, &(send_data[0]), 10);
   }
   else if(rank == 0){
     sim::Array<Vec<float,3>> recv_data{10};
@@ -33,8 +34,8 @@ int main(int argc, char**argv) {
     auto status = request.wait();
     std::cout<<"request error: "<<status.error()<<std::endl;
   }
-
-/*
+*/
+  /*
   if(rank == 1) {
     std::vector< Vec<float,3> > send_data;
     for(int i=0; i<10; i++)
@@ -60,20 +61,25 @@ int main(int argc, char**argv) {
       std::cout<<"received: "<<el<<std::endl;
 
   }
-
+*/
   if(rank == 1) {
     Parameters<float,3> recv;
-    boost::mpi::broadcast(comm_world, recv, 0);
+    comm_world.broadcast(&recv, MPI_PARAMETERS, 0);
 
+    std::cout<<"Max local on rank 1: "<<recv.max_particles_local()<<std::endl;
+    std::cout<<"initial global count on rank 1: "<<recv.initial_global_particle_count()<<std::endl;
+    std::cout<<"Particle rest spacing on rank 1: "<<recv.particle_rest_spacing()<<std::endl;
     std::cout<<"Gravity on rank 1: "<<recv.gravity()<<std::endl;
   }
   else {
     Parameters<float,3> send;
+    send.max_particles_local_ = 17;
+    send.initial_global_particle_count_ = 7;
+    send.particle_rest_spacing_ = 0.1;
     send.gravity_ = 9.8;
-    boost::mpi::broadcast(comm_world, send, 0);
+    comm_world.broadcast(&send, MPI_PARAMETERS, 0);
   }
-
-
+/*
   if(rank == 1) {
     Parameters<float,3> recv;
     boost::mpi::broadcast(comm_world, recv, 0);
@@ -88,5 +94,16 @@ int main(int argc, char**argv) {
     boost::mpi::broadcast(comm_world, send, 0);
   }
 */
+   if(rank == 1) {
+    Vec<float,3> recv;
+    comm_world.broadcast(&recv, MPI_VEC, 0);
+
+    std::cout<<"vec on recv: "<<recv<<std::endl;
+  }
+  else {
+    Vec<float,3> send{7.0};
+    comm_world.broadcast(&send, MPI_VEC, 0);
+  }
+
   return 0;
 };

@@ -3,12 +3,14 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
+#include <type_traits>
 #include "dimension.h"
 #include "vec.h"
 #include "parameters.h"
 #include "aabb.h"
 
 extern "C" {
+  #define OMPI_SKIP_MPICXX // Disable C++ bindings
   #include "mpi.h"
 }
 
@@ -62,12 +64,12 @@ namespace sim { namespace mpi {
     MPI_Aint disps[Dim];
     int block_lengths[Dim];
 
-    assert(is_standard_layout<Vec_type>::value);
+    assert(std::is_standard_layout<Vec_type>::value);
 
     for(int i=0; i<Dim; ++i) {
       types[i] = get_mpi_type<Real>();
       block_lengths[i] = 1;
-      disps[i] = ((std::size_t) &(((Vec_type*)0)->data[i])); // offsetof macro issues so manully get offset
+      disps[i] = ((MPI_Aint) &(((Vec_type*)0)->data_[i])); // offsetof macro issues so manully get offset
 //      disps[i] = offsetof( Vec_type, data_[i]);
     }
 
@@ -85,7 +87,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[2];
     int block_lengths[2];
 
-    assert(is_standard_layout<AABB_type>);
+    assert(std::is_standard_layout<AABB_type>::value);
 
     types[0] = MPI_VEC;
     types[1] = MPI_VEC;
@@ -110,7 +112,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[member_count];
     int block_lengths[member_count];
 
-    assert(is_standard_layout<Parameters_type>);
+    assert(std::is_standard_layout<Parameters_type>::value);
 
     MPI_Datatype MPI_SIZE_T = get_mpi_size_t();
 
@@ -191,7 +193,7 @@ namespace sim { namespace mpi {
     disps[18] = offsetof(Parameters_type, simulation_mode_);
 
     int err;
-    err = MPI_Type_create_struct(Dim, block_lengths, disps, types, &MPI_PARAMETERS);
+    err = MPI_Type_create_struct(member_count, block_lengths, disps, types, &MPI_PARAMETERS);
     check_return(err);
     err = MPI_Type_commit(&MPI_PARAMETERS);
     check_return(err);
@@ -199,14 +201,23 @@ namespace sim { namespace mpi {
 
   template <typename Real, Dimension Dim>
   void create_mpi_types(MPI_Datatype& MPI_VEC,
-                        MPI_Datatype& MPI_AABB,
                         MPI_Datatype& MPI_PARAMETERS) {
+    MPI_Datatype MPI_AABB;
+
     create_vec_type<Real,Dim>(MPI_VEC);
     create_aabb_type<Real,Dim>(MPI_VEC, MPI_AABB);
     create_parameters_type<Real,Dim>(MPI_AABB, MPI_PARAMETERS);
   }
 
+  void free_mpi_types(MPI_Datatype& MPI_VEC,
+                      MPI_Datatype& MPI_PARAMETERS) {
+
+    MPI_Type_free(&MPI_VEC);
+    MPI_Type_free(&MPI_PARAMETERS);
+  }
+
   class Environment {
+  public:
     Environment(int *argc, char ***argv) {
       int err = MPI_Init(argc, argv);
       check_return(err);
@@ -227,7 +238,12 @@ namespace sim { namespace mpi {
     Communicator(): comm_{MPI_COMM_WORLD} {}
 
     Communicator(int color) {
-      int err = MPI_Comm_split(MPI_COMM_WORLD, color, this->rank(), &comm_);
+      int world_rank;
+      int err = MPI_Comm_rank(MPI_COMM_WORLD, &world_rank);
+      check_return(err);
+
+      err = MPI_Comm_split(MPI_COMM_WORLD, color, world_rank, &comm_);
+
       check_return(err);
     }
 
@@ -242,28 +258,95 @@ namespace sim { namespace mpi {
 
     int rank() const {
       int rank;
-      MPI_Comm_rank(comm_, &rank);
+      int err = MPI_Comm_rank(comm_, &rank);
+      check_return(err);
       return rank;
     }
 
     int size() const {
       int size;
-      MPI_Comm_size(comm_, &size);
+      int err = MPI_Comm_size(comm_, &size);
+      check_return(err);
       return size;
+    }
+
+    void barrier() const {
+      int err = MPI_Barrier(comm_);
+      check_return(err);
     }
 
     MPI_Comm MPI_comm() const {
       return comm_;
     }
 
-    void i_send(const void *buf, int count, MPI_Datatype datatype, int dest, int tag,
-           MPI_Request *request) const {
-      int err = MPI_Isend(buf, count, datatype, dest, tag, comm_, request);
+    MPI_Request i_send(int dest, int tag, const void *buf, int count, MPI_Datatype data_type) const {
+      MPI_Request request;
+      int err = MPI_Isend(buf, count, data_type, dest, tag, comm_, &request);
+      check_return(err);
+
+      return request;
+    }
+
+    MPI_Request i_recv(int source, int tag, void *buf, int count, MPI_Datatype data_type) const {
+      MPI_Request request;
+      int err = MPI_Irecv(buf, count, data_type, source, tag, comm_, &request);
+      check_return(err);
+
+      return request;
+    }
+
+    void all_reduce(const void *send_buf, void *recv_buf, MPI_Datatype data_type, MPI_Op op) const {
+      const int count = 1;
+      int err = MPI_Allreduce(send_buf, recv_buf, count, data_type, op, comm_);
       check_return(err);
     }
 
-    void i_recv(void *buf, int count, MPI_Datatype datatype, int source, int tag, MPI_Request *request) {
-      int err = MPI_Irecv(buf, count, datatype, source, tag, comm_, request);
+    // Send side of gather with 1 send element per rank
+    void gather(const void *send_buf, MPI_Datatype type, int root) const {
+      assert(root == 0);
+
+      int send_count = 1;
+
+      int err = MPI_Gather(send_buf, send_count, type, NULL, 0, type, root, comm_);
+      check_return(err);
+    }
+
+    // Receive side of gather with 1 send element per rank(excluding root which sends 0 elements)
+    void gather(void *recv_buff, MPI_Datatype type) const {
+      int recv_count = 1;
+
+      int err = MPI_Gather(MPI_IN_PLACE, 0, type, recv_buff, recv_count, type, 0, comm_);
+      check_return(err);
+    }
+
+    // Send side of gatherv
+    void gatherv(const void *send_buf, int send_count, MPI_Datatype type, int root) const {
+      int err = MPI_Gatherv(send_buf, send_count, type, NULL, NULL, NULL, type, root, comm_);
+      check_return(err);
+    }
+
+    // Recv side of gatherv, recv_counts includes
+    void gatherv(void *recv_buf, std::vector<int>& recv_counts, MPI_Datatype type) const {
+      int displs[recv_counts.size()];
+
+      // gatherv is done in_place so rank 0 send count must be 0
+      assert(recv_counts[0] == 0);
+      assert(rank() == 0);
+      assert(recv_counts.size() == size());
+
+      int displacement = 0;
+      for(int i=0; i<size(); i++) {
+        displs[i] = displacement;
+        displacement += recv_counts[i];
+      }
+
+      int err = MPI_Gatherv(MPI_IN_PLACE, 0, type, recv_buf, recv_counts.data(), displs, type, rank(), comm_);
+      check_return(err);
+    }
+
+    void broadcast(void *buffer, MPI_Datatype datatype, int root) const {
+      const int count = 1;
+      int err = MPI_Bcast(buffer, count, datatype, root, comm_);
       check_return(err);
     }
 
@@ -271,7 +354,7 @@ namespace sim { namespace mpi {
     MPI_Comm comm_;
   };
 
-  void wait_all(int count, MPI_Request* requests, MPI_Status* statuses) {
+  void wait_all(MPI_Request* requests, int count, MPI_Status* statuses) {
     int err = MPI_Waitall(count, requests, statuses);
     check_return(err);
   }

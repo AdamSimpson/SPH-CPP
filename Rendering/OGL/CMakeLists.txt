@@ -20,7 +20,7 @@ target_link_libraries(sph-renderer ${CMAKE_THREAD_LIBS_INIT})
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})
-target_link_libraries(sph-renderer ${MPI_CXX_LIBRARIES})
+target_link_libraries(sph-renderer ${MPI_C_LIBRARIES})
 
 set(Boost_NO_BOOST_CMAKE TRUE) # Ignore system boost and use module system boost
 find_package(Boost COMPONENTS mpi system filesystem serialization REQUIRED)
