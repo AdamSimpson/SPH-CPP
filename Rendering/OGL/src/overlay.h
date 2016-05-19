@@ -43,15 +43,23 @@ public:
 
   void draw() const {
     // Draw tunable parameters in top left of screen
-    const int x_offset = text_size_ * 1.2f;
+    int x_offset = text_size_ * 1.2f;
     int y_offset = screen_dims_.y - (text_size_ * 1.2f);
 
+    // Render tunable parameters
     for(const auto& name : tunable_names_) {
-      text_renderer_.draw_text(text(name),
+      text_renderer_.draw_text(tunable_text(name),
                                x_offset, y_offset,
                                1.0f, this->tunable_color(name));
       y_offset -= text_size_ * 1.2f;
     }
+
+    // Render FPS
+    x_offset = screen_dims_.x - (text_size_ * 4.0f);
+    y_offset = screen_dims_.y - (text_size_ * 1.2f);
+    text_renderer_.draw_text(fps_text(),
+                             x_offset, y_offset,
+                             1.0f, default_color());
   }
 
   void move_selected_tunable_up() {
@@ -87,10 +95,8 @@ public:
       move_selected_tunable_down();
   }
 
-  std::string text(const std::string& name) const {
-    std::ostringstream text;
-    text << name << ": " << tunable_value_.at(name)();
-    return text.str();
+  void set_fps(int fps) {
+    fps_ = fps;
   }
 
 private:
@@ -99,6 +105,8 @@ private:
   glm::vec2 screen_dims_;
   // List of tunable overlay entries
   std::vector<std::string> tunable_names_;
+
+  int fps_;
 
   // Current selected tunable items name
   std::string selected_tunable_;
@@ -117,6 +125,10 @@ private:
     return selected(tunable_name) ? green : white;
   }
 
+  glm::vec3 default_color() const {
+    return glm::vec3{1.0f, 1.0f, 1.0f};
+  }
+
   bool selected(const std::string& tunable_name) const {
     return tunable_name == selected_tunable_;
   }
@@ -130,4 +142,17 @@ private:
     tunable_increase_[name] = increase_func;
     tunable_decrease_[name] = decrease_func;
   }
+
+  std::string tunable_text(const std::string& name) const {
+    std::ostringstream text;
+    text << name << ": " << tunable_value_.at(name)();
+    return text.str();
+  }
+
+  std::string fps_text() const {
+    std::ostringstream text;
+    text << "FPS: " << fps_;
+    return text.str();
+  }
+
 };

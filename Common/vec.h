@@ -169,6 +169,7 @@ struct Vec<T, 3> {
     T data_[3];              /**< component array */
     struct { T x, y, z; };  /**< x, y, z access  */
     struct { T r, g, b; };  /**< r, g, b access  */
+    struct { T h, s, v; };  /**< h, s, v access */
   };
 
   /**

@@ -18,7 +18,6 @@ extern "C" {
   lightweight MPI wrapper specialized for SPH
 **/
 namespace sim { namespace mpi {
-
   inline void check_return(int return_code) {
     if(return_code != MPI_SUCCESS) {
       char error_string[MPI_MAX_ERROR_STRING];
@@ -46,7 +45,7 @@ namespace sim { namespace mpi {
   template<>
   MPI_Datatype get_mpi_type<char>() {
     return MPI_CHAR;
-  }
+    }
 
   MPI_Datatype get_mpi_size_t() {
     if(sizeof(std::size_t) == sizeof(uint32_t))
@@ -347,6 +346,14 @@ namespace sim { namespace mpi {
     void broadcast(void *buffer, MPI_Datatype datatype, int root) const {
       const int count = 1;
       int err = MPI_Bcast(buffer, count, datatype, root, comm_);
+      check_return(err);
+    }
+
+    void send_recv(const void *sendbuf, int destination, void *recvbuf, int source,
+                   int count, MPI_Datatype datatype) const {
+      int tag = 7;
+      int err = MPI_Sendrecv(sendbuf, count, datatype, destination, tag, recvbuf, count,
+                             datatype, source, tag, comm_, MPI_STATUS_IGNORE);
       check_return(err);
     }
 

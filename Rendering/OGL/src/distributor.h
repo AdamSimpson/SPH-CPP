@@ -32,25 +32,31 @@ public:
     particle_positions_.clear();
 
     // Gather number of particle coordinates that will be sent from each compute process
-    std::vector<int> particle_counts;
-    particle_counts.resize(comm_world_.size());
-
-    particle_counts[0] = 0;
-    comm_world_.gather(particle_counts.data(), MPI_INT);
+    particle_counts_.resize(comm_world_.size());
+    particle_counts_[0] = 0;
+    comm_world_.gather(particle_counts_.data(), sim::mpi::get_mpi_size_t());
 
     uint64_t receive_count = 0;
-    for (int n : particle_counts)
+    for (std::size_t n : particle_counts_)
       receive_count += n;
 
     // Ensure enough space is available in receieve buffer
     particle_positions_.resize(receive_count);
 
     // Gather particle vec coordinates
-    comm_world_.gatherv(particle_positions_.data(), particle_counts, MPI_VEC_);
+    std::vector<int> particle_counts_int(particle_counts_.begin(), particle_counts_.end());
+    comm_world_.gatherv(particle_positions_.data(), particle_counts_int, MPI_VEC_);
+
+    // Remove renderers 0 count from particle_counts
+    particle_counts_.erase(particle_counts_.begin());
   }
 
   const std::vector< Vec<Real,Dim> >& particle_positions() const {
     return particle_positions_;
+  }
+
+  const std::vector<std::size_t>& particle_counts() const {
+    return particle_counts_;
   }
 
   // Sync simulation parameters
@@ -64,6 +70,7 @@ private:
   const sim::mpi::Communicator comm_world_;
   const sim::mpi::Communicator comm_render_;
   std::vector< Vec<Real,Dim> > particle_positions_;
+  std::vector<std::size_t> particle_counts_;
   MPI_Datatype MPI_VEC_;
   MPI_Datatype MPI_PARAMETERS_;
 };

@@ -64,6 +64,8 @@ public:
   sim::Array<Vec<Real,Dim>>& positions() { return positions_; }
   sim::Array<Vec<Real,Dim>>& position_stars() { return position_stars_; }
   sim::Array<Vec<Real,Dim>>& velocities() { return velocities_; }
+  sim::Array<Real>& densities() { return densities_; }
+  sim::Array<Real>& lambdas() { return lambdas_; }
 
   const sim::Array<Vec<Real,Dim>>& positions() const { return positions_; }
   const sim::Array<Vec<Real,Dim>>& position_stars() const { return position_stars_; }
@@ -399,14 +401,17 @@ public:
 
   }
 
-  void apply_surface_tension(IndexSpan span) {
+  void apply_surface_tension(IndexSpan color_field_span, IndexSpan surface_tension_span) {
     const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
     const C_Spline<Real,Dim> C{parameters_.smoothing_radius()};
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
+
+    thrust::counting_iterator<std::size_t> begin_color(color_field_span.begin);
+    thrust::counting_iterator<std::size_t> end_color(color_field_span.end);
+    thrust::counting_iterator<std::size_t> begin_tension(surface_tension_span.begin);
+    thrust::counting_iterator<std::size_t> end_tension(surface_tension_span.end);
 
     // Compute gradient of color field
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin_color, end_color, [=] (std::size_t p) {
         Vec<Real,Dim> color{0.0};
         for(const std::size_t q : neighbors_[p]) {
           color += Del_W(position_stars_[p],  position_stars_[q]) / densities_[q];
@@ -414,7 +419,7 @@ public:
         scratch_[p] = parameters_.smoothing_radius() * color;
       });
 
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    thrust::for_each(thrust::device, begin_tension, end_tension, [=] (std::size_t p) {
         Vec<Real,Dim> surface_tension_force{0.0};
 
         for(const std::size_t q : neighbors_[p]) {

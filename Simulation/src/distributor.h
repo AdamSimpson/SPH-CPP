@@ -54,8 +54,10 @@ public:
                   comm_compute_{1},
                   domain_{0.0, 0.0},
                   resident_count_{0},
-                  edge_count_{0},
-                  halo_count_{0},
+                  edge_left_count_{0},
+                  edge_right_count_{0},
+                  halo_count_left_{0},
+                  halo_count_right_{0},
                   receive_left_index_{0},
                   receive_right_index_{0} {
 
@@ -75,7 +77,7 @@ public:
                        const Parameters<Real,Dim> & parameters) {
     this->set_domain_bounds(parameters.initial_fluid(),
                             parameters.boundary());
-    edge_width_ = parameters.smoothing_radius();
+    edge_width_ = 1.2*parameters.smoothing_radius();
     this->distribute_initial_fluid(parameters.initial_fluid(),
                                    particles,
                                    parameters.particle_rest_spacing());
@@ -97,6 +99,59 @@ public:
       domain_.begin = global_boundary.min.x;
   }
 
+  // Checks for balanced number of particles in each domain
+  void balance_domains() {
+    // Particles per domain if evenly divided
+    const int64_t even_count = global_resident_count() / comm_compute_.size();
+    const int64_t max_diff = even_count * 0.05;
+
+    // Fixed distance to move partition if unbalanced
+    const Real dx = edge_width_ * (Real)0.15;
+
+    // Minimum domain width
+    const Real min_width = 3.0*edge_width_;
+
+    // Exchange information with neighbors
+    const std::size_t my_count = resident_count();
+    std::size_t right_count = 0;
+    comm_compute_.send_recv(&my_count, this->domain_to_left(),
+                            &right_count, this->domain_to_right(),
+                            1, sim::mpi::get_mpi_size_t());
+
+    const Real my_length = domain_.end - domain_.begin;
+    Real left_length = 0.0;
+    Real right_length = 0.0;
+    comm_compute_.send_recv(&my_length, this->domain_to_left(),
+                            &left_length, this->domain_to_left(),
+                            1, sim::mpi::get_mpi_type<Real>());
+    comm_compute_.send_recv(&my_length, this->domain_to_right(),
+                            &right_length, this->domain_to_right(),
+                            1, sim::mpi::get_mpi_type<Real>());
+
+    const int64_t diff = my_count - even_count;
+    const int64_t right_diff = right_count - even_count;
+
+    if(domain_to_left() != MPI_PROC_NULL) {
+      // domain has too many particles
+      if(diff > max_diff && my_length > min_width)
+        domain_.begin += dx;
+      // domain has too few particles
+      if(diff < -max_diff && left_length > min_width)
+        domain_.begin -= dx;
+    }
+
+    if(domain_to_right() != MPI_PROC_NULL) {
+      // domain to right has too many particles
+      if(right_diff > max_diff && right_length > min_width)
+        domain_.end += dx;
+      // domain to right has too few particles
+      if(right_diff < -max_diff && my_length > min_width)
+        domain_.end -= dx;
+    }
+
+    std::cout<<"bounds for rank: "<<comm_compute_.rank()<<" "<<domain_.begin<<", "<<domain_.end<<std::endl;
+  }
+
   /**
      @return Return true if last rank in domain
   **/
@@ -116,7 +171,7 @@ public:
   **/
   int domain_to_left() const {
     int left = MPI_PROC_NULL;
-    if(comm_compute_.rank() != 0)
+    if(comm_compute_.rank() > 0)
       left = comm_compute_.rank() - 1;
 
     return left;
@@ -162,38 +217,38 @@ public:
   }
 
   /**
-    @return span of edge indices
-  **/
-  IndexSpan edge_span() const {
-    return IndexSpan(resident_count_ - edge_count_, resident_count_);
-  }
-
-  /**
     @return count of edge particles
   **/
   std::size_t edge_count() const {
-    return edge_count_;
+    return edge_left_count_ + edge_right_count_;
   }
 
   /**
-    @return span of halo indices
+    @return span of edge indices
   **/
-  IndexSpan halo_span() const {
-    return IndexSpan(this->resident_span().end, this->resident_span().end + halo_count_);
+  IndexSpan edge_span() const {
+    return IndexSpan(resident_count_ - edge_count(), resident_count_);
   }
 
   /**
     @return count of edge particles
   **/
   std::size_t halo_count() const {
-    return halo_count_;
+    return halo_count_left_ + halo_count_right_;
+  }
+
+  /**
+    @return span of halo indices
+  **/
+  IndexSpan halo_span() const {
+    return IndexSpan(this->resident_span().end, this->resident_span().end + halo_count());
   }
 
   /**
     @return interior span
   **/
   IndexSpan interior_span() const {
-    return IndexSpan{0,this->resident_count_ - edge_count_};
+    return IndexSpan{0,this->resident_count_ - edge_count()};
   }
 
   /**
@@ -203,12 +258,17 @@ public:
     return this->interior_span().end - this->interior_span().begin;
   }
 
+  std::size_t local_count() const {
+    return this->local_span().end - this->local_span().begin;
+  }
+
   /**
     @return number of global resident particles
   **/
   std::size_t global_resident_count() const {
     std::size_t global_count = 0;
-    comm_compute_.all_reduce(&this->resident_count(), &global_count, MPI_UINT64_T, MPI_SUM);
+    std::size_t local_count = this->resident_count();
+    comm_compute_.all_reduce(&local_count, &global_count, MPI_UINT64_T, MPI_SUM);
     return global_count;
   }
 
@@ -236,8 +296,8 @@ public:
       particle_count_x += remaining;
     }
 
-    if(particle_count_x < 2)
-      throw std::runtime_error("Less than two particles in x dimension!");
+    if(particle_count_x < 4)
+      throw std::runtime_error("Less than four particles in x dimension!");
 
     // Length of fluid for current process
     Real local_fluid_length = (particle_count_x) * spacing;
@@ -265,6 +325,58 @@ public:
     this->finalize_halo_exchange(particles);
   }
 
+  void initiate_sync_halo_scalar(sim::Array<Real>& halo_values) {
+    const int max_recv_left = halo_count_left_;
+    const int max_recv_right = halo_count_right_;
+
+    const std::size_t receive_left_index = resident_count();
+    const std::size_t receive_right_index = receive_left_index + halo_count_left_;
+
+    const std::size_t send_left_index = interior_count();
+    const std::size_t send_right_index = send_left_index + edge_left_count_;
+
+    requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
+                                       &halo_values[receive_left_index], max_recv_left, sim::mpi::get_mpi_type<Real>());
+    requests_[1] = comm_compute_.i_recv(this->domain_to_right(), 1,
+                                       &halo_values[receive_right_index], max_recv_right, sim::mpi::get_mpi_type<Real>());
+
+    requests_[2] = comm_compute_.i_send(this->domain_to_left(), 1,
+                                       &halo_values[send_left_index], edge_left_count_, sim::mpi::get_mpi_type<Real>());
+    requests_[3]  = comm_compute_.i_send(this->domain_to_right(), 0,
+                                        &halo_values[send_right_index], edge_right_count_, sim::mpi::get_mpi_type<Real>());
+  }
+
+  void finalize_sync_halo_scalar() {
+    MPI_Status statuses[4];
+    sim::mpi::wait_all(requests_, 4, statuses);
+  }
+
+  void initiate_sync_halo_vec(sim::Array<Vec<Real,Dim>> & halo_values) {
+    const int max_recv_left = halo_count_left_;
+    const int max_recv_right = halo_count_right_;
+
+    const std::size_t receive_left_index = resident_count();
+    const std::size_t receive_right_index = receive_left_index + halo_count_left_;
+
+    const std::size_t send_left_index = interior_count();
+    const std::size_t send_right_index = send_left_index + edge_left_count_;
+
+    requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
+                                       &halo_values[receive_left_index], max_recv_left, MPI_VEC_);
+    requests_[1] = comm_compute_.i_recv(this->domain_to_right(), 1,
+                                       &halo_values[receive_right_index], max_recv_right, MPI_VEC_);
+
+    requests_[2] = comm_compute_.i_send(this->domain_to_left(), 1,
+                                       &halo_values[send_left_index], edge_left_count_, MPI_VEC_);
+    requests_[3]  = comm_compute_.i_send(this->domain_to_right(), 0,
+                                        &halo_values[send_right_index], edge_right_count_, MPI_VEC_);
+  }
+
+  void finalize_sync_halo_vec() {
+    MPI_Status statuses[4];
+    sim::mpi::wait_all(requests_, 4, statuses);
+  }
+
 private:
   const sim::mpi::Environment environment_;
   const sim::mpi::Communicator comm_world_;          /**< world communicator **/
@@ -273,10 +385,14 @@ private:
   Real edge_width_;
 
   std::size_t resident_count_;
-  std::size_t edge_count_;
-  std::size_t halo_count_;
+  std::size_t edge_left_count_;
+  std::size_t edge_right_count_;
+  std::size_t halo_count_left_;
+  std::size_t halo_count_right_;
   std::size_t receive_left_index_;
   std::size_t receive_right_index_;
+  std::size_t oob_left_count_;
+  std::size_t oob_right_count_;
 
   MPI_Request requests_[12];
 
@@ -287,8 +403,9 @@ private:
     Invalidates halo particles
   **/
   void remove_halo_particles(Particles<Real,Dim> & particles) {
-    particles.remove(this->halo_count_);
-    halo_count_ = 0;
+    particles.remove(this->halo_count());
+    halo_count_left_ = 0;
+    halo_count_right_ = 0;
   }
 
   void remove_resident_particles(Particles<Real,Dim> & particles,
@@ -306,13 +423,22 @@ private:
     resident_count_ += count;
   }
 
-  void add_halo_particles(Particles<Real,Dim> & particles,
+  void add_halo_particles_left(Particles<Real,Dim> & particles,
                           const Vec<Real,Dim>* new_positions,
                           const Vec<Real,Dim>* new_position_stars,
                           const Vec<Real,Dim>* new_velocities,
                           std::size_t count) {
     particles.add(new_positions, new_position_stars, new_velocities, count);
-    halo_count_ += count;
+    halo_count_left_ += count;
+  }
+
+  void add_halo_particles_right(Particles<Real,Dim> & particles,
+                          const Vec<Real,Dim>* new_positions,
+                          const Vec<Real,Dim>* new_position_stars,
+                          const Vec<Real,Dim>* new_velocities,
+                          std::size_t count) {
+    particles.add(new_positions, new_position_stars, new_velocities, count);
+    halo_count_right_ += count;
   }
 
   /**
@@ -338,8 +464,8 @@ private:
       return (x_star <= domain_.begin); // True if oob-left
     });
 
-    const auto oob_left_count  = oob_right_begin - oob_begin;
-    const auto oob_right_count = end - oob_right_begin;
+    oob_left_count_  = oob_right_begin - oob_begin;
+    oob_right_count_ = end - oob_right_begin;
 
     const int max_recv_per_side = static_cast<int>(particles.available()/2);
 
@@ -348,9 +474,8 @@ private:
     std::size_t send_left_index = oob_begin - begin;
     std::size_t send_right_index = oob_right_begin - begin;
 
-    std::cout<<"rank "<<comm_compute_.rank()<<"receive indices: "<<receive_left_index_<<", "<<receive_right_index_<<"send indices: "<<send_left_index<<", "<<send_right_index<<std::endl;
+    std::cout<<"rank "<<comm_compute_.rank()<<" receive indices: "<<receive_left_index_<<", "<<receive_right_index_<<" send indices: "<<send_left_index<<", "<<send_right_index<<std::endl;
 
-    // Boost MPI doesn't support MPI_PROC_NULL...cool
     requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
                                        &(particles.position_stars()[receive_left_index_]), max_recv_per_side, MPI_VEC_);
     requests_[1] = comm_compute_.i_recv(this->domain_to_left(), 1,
@@ -366,20 +491,20 @@ private:
                                        &(particles.velocities()[receive_right_index_]), max_recv_per_side, MPI_VEC_);
 
     requests_[6] = comm_compute_.i_send(this->domain_to_left(), 3,
-                                       &(particles.position_stars()[send_left_index]), oob_left_count, MPI_VEC_);
+                                       &(particles.position_stars()[send_left_index]), oob_left_count_, MPI_VEC_);
     requests_[7] = comm_compute_.i_send(this->domain_to_left(), 4,
-                                       &(particles.positions()[send_left_index]), oob_left_count, MPI_VEC_);
+                                       &(particles.positions()[send_left_index]), oob_left_count_, MPI_VEC_);
     requests_[8] = comm_compute_.i_send(this->domain_to_left(), 5,
-                                       &(particles.velocities()[send_left_index]), oob_left_count, MPI_VEC_);
+                                       &(particles.velocities()[send_left_index]), oob_left_count_, MPI_VEC_);
 
     requests_[9]  = comm_compute_.i_send(this->domain_to_right(), 0,
-                                        &(particles.position_stars()[send_right_index]), oob_right_count, MPI_VEC_);
+                                        &(particles.position_stars()[send_right_index]), oob_right_count_, MPI_VEC_);
     requests_[10] = comm_compute_.i_send(this->domain_to_right(), 1,
-                                        &(particles.positions()[send_right_index]), oob_right_count, MPI_VEC_);
+                                        &(particles.positions()[send_right_index]), oob_right_count_, MPI_VEC_);
     requests_[11] = comm_compute_.i_send(this->domain_to_right(), 2,
-                                        &(particles.velocities()[send_right_index]), oob_right_count, MPI_VEC_);
+                                        &(particles.velocities()[send_right_index]), oob_right_count_, MPI_VEC_);
 
-   std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count<<" to rank "<<this->domain_to_left()<<"and"<<oob_right_count<<" to rank "<<this->domain_to_right()<<std::endl;
+   std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
 
   }
 
@@ -387,48 +512,30 @@ private:
     MPI_Status statuses[12];
     sim::mpi::wait_all(requests_, 12, statuses);
 
-//     for(int i=0; i<2; i++) {
-//       if(statuses[i].error()) {
-//         std::cout<<"rank "<<comm_compute_.rank()<<"ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
-//       }
-//     }
-
-//     comm_compute_.barrier();
-//     exit(1);
-
     // copy recieved left/right to correct position in particle array
-    int received_left_count, received_right_count, sent_left_count, sent_right_count;
+    int received_left_count, received_right_count;
     MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
     MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
-    MPI_Get_count(&statuses[6], MPI_VEC_, &sent_left_count);
-    MPI_Get_count(&statuses[9], MPI_VEC_, &sent_right_count);
-    const int sent_count = sent_left_count + sent_right_count;
-/*
-   std::cout<<"rank : "<<comm_compute_.rank()<<" "<<*statuses[6].count<Vec<Real,Dim>>()<<"Sent left, "<<*statuses[9].count<Vec<Real,Dim>>()<<" send right, Receiving "<<received_left_count<<" from left "<<received_right_count<<" from right"<<std::endl;
+    const int sent_count = oob_left_count_ + oob_right_count_;
 
-    for(int i=0; i<12; i++) {
-      if(statuses[i].error()) {
-        std::cout<<"rank "<<comm_compute_.rank()<<"ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
-      }
-    }
+    std::cout<<"rank "<<comm_compute_.rank()<<" sent "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
+    std::cout<<"rank "<<comm_compute_.rank()<<" received "<<received_left_count<<" from "<<this->domain_to_left()<<" and "<<received_right_count<<" from "<<this->domain_to_right()<<std::endl;
 
-    comm_compute_.barrier();
-    exit(1);
-*/
     this->remove_resident_particles(particles, sent_count);
 
     this->add_resident_particles(particles,
-                                 &particles.position_stars()[receive_left_index_],
                                  &particles.positions()[receive_left_index_],
+                                 &particles.position_stars()[receive_left_index_],
                                  &particles.velocities()[receive_left_index_],
                                  received_left_count);
 
     this->add_resident_particles(particles,
-                                 &particles.position_stars()[receive_right_index_],
                                  &particles.positions()[receive_right_index_],
+                                 &particles.position_stars()[receive_right_index_],
                                  &particles.velocities()[receive_right_index_],
                                  received_right_count);
 
+    std::cout<<"rank "<<comm_compute_.rank()<<" resident count: "<<resident_count()<<" local count: "<<local_count()<<std::endl;
   }
   /**
     Partition edge particles.
@@ -460,13 +567,12 @@ private:
       return (x_star <= edge_left); // True if edge-left
     });
 
-    const auto edge_left_count = edge_right_begin - edge_begin;
-    const auto edge_right_count = end - edge_right_begin;
-    edge_count_   = edge_left_count + edge_right_count;
+    edge_left_count_ = edge_right_begin - edge_begin;
+    edge_right_count_ = end - edge_right_begin;
 
     const int max_recv_per_side = static_cast<int>(particles.available()/2);
 
-    receive_left_index_ = end - begin;
+    receive_left_index_ = this->resident_count_;
     receive_right_index_ = receive_left_index_ + max_recv_per_side;
     const std::size_t send_left_index = edge_begin - begin;
     const std::size_t send_right_index = edge_right_begin - begin;
@@ -486,50 +592,40 @@ private:
                                        &particles.velocities()[receive_right_index_], max_recv_per_side, MPI_VEC_);
 
     requests_[6] = comm_compute_.i_send(this->domain_to_left(), 3,
-                                       &particles.position_stars()[send_left_index], edge_left_count, MPI_VEC_);
+                                       &particles.position_stars()[send_left_index], edge_left_count_, MPI_VEC_);
     requests_[7] = comm_compute_.i_send(this->domain_to_left(), 4,
-                                       &particles.positions()[send_left_index], edge_left_count, MPI_VEC_);
+                                       &particles.positions()[send_left_index], edge_left_count_, MPI_VEC_);
     requests_[8] = comm_compute_.i_send(this->domain_to_left(), 5,
-                                       &particles.velocities()[send_left_index], edge_left_count, MPI_VEC_);
+                                       &particles.velocities()[send_left_index], edge_left_count_, MPI_VEC_);
 
     requests_[9]  = comm_compute_.i_send(this->domain_to_right(), 0,
-                                        &particles.position_stars()[send_right_index], edge_right_count, MPI_VEC_);
+                                        &particles.position_stars()[send_right_index], edge_right_count_, MPI_VEC_);
     requests_[10] = comm_compute_.i_send(this->domain_to_right(), 1,
-                                        &particles.positions()[send_right_index], edge_right_count, MPI_VEC_);
+                                        &particles.positions()[send_right_index], edge_right_count_, MPI_VEC_);
     requests_[11] = comm_compute_.i_send(this->domain_to_right(), 2,
-                                        &particles.velocities()[send_right_index], edge_right_count, MPI_VEC_);
+                                        &particles.velocities()[send_right_index], edge_right_count_, MPI_VEC_);
 }
 
   void finalize_halo_exchange(Particles<Real,Dim> & particles) {
     MPI_Status statuses[12];
     sim::mpi::wait_all(requests_, 12, statuses);
 
-/*
-    for(int i=0; i<12; i++) {
-      if(statuses[i].error()) {
-        std::cout<<"HALO ERROR!"<<i<<", "<<statuses[i].error()<<std::endl;
-        exit(1);
-      }
-    }
-*/
     // copy recieved left/right to correct position in particle array
-    int received_left_count, received_right_count, sent_left_count, sent_right_count;
+
+    int received_left_count, received_right_count;//, sent_left_count, sent_right_count;
     MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
     MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
-    MPI_Get_count(&statuses[6], MPI_VEC_, &sent_left_count);
-    MPI_Get_count(&statuses[9], MPI_VEC_, &sent_right_count);
-    const int sent_count = sent_left_count + sent_right_count;
 
     // Left halo doesn't need to be copied but does need to incriment particle counts
-    this->add_halo_particles(particles,
-                             &particles.position_stars()[receive_left_index_],
+    this->add_halo_particles_left(particles,
                              &particles.positions()[receive_left_index_],
+                             &particles.position_stars()[receive_left_index_],
                              &particles.velocities()[receive_left_index_],
                              received_left_count);
 
-    this->add_halo_particles(particles,
-                             &particles.position_stars()[receive_right_index_],
+    this->add_halo_particles_right(particles,
                              &particles.positions()[receive_right_index_],
+                             &particles.position_stars()[receive_right_index_],
                              &particles.velocities()[receive_right_index_],
                              received_right_count);
   }
@@ -541,18 +637,12 @@ private:
 public:
   void sync_to_renderer(const Particles<Real,Dim> & particles) {
     // Gather number of particle coordinates that will be sent to render process
-    const int particle_count = (int)resident_count_;
+    const std::size_t particle_count = resident_count_;
 
-    std::cout<<"Gather started on compute, sending:"<<particle_count<<std::endl;
-
-    comm_world_.gather(&particle_count, MPI_INT, 0);
-
-    std::cout<<"Gather completed on compute\n";
+    comm_world_.gather(&particle_count, sim::mpi::get_mpi_size_t(), 0);
 
     // Gather particle coordinates on render process
     comm_world_.gatherv(particles.positions().data(), particle_count, MPI_VEC_, 0);
-
-    std::cout<<"Gatherv completed on compute\n";
   }
 
   // Receive updated parameters from render node

@@ -96,7 +96,7 @@ public:
     unsigned int ticks = SDL_GetTicks();
     float seconds = (SDL_GetTicks() - sdl_ticks_)/1000.0;
     sdl_ticks_ = ticks;
-    std::cout<<"FPS: "<<1.0/seconds<<std::endl;
+    std::cout<<"Render FPS: "<<1.0/seconds<<std::endl;
 
     SDL_GL_SwapWindow(window_);
   }

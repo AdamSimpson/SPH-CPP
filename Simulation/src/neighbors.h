@@ -193,7 +193,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     Find all particle neighbors.
     particles_to_bin_span is the span of particles to bin/sort
     particles_to_fill_span is the span of particles to fill in neighbors for
-    This is seperate as we need to bin/sort resident + halo but
+    This is seperate as we need to bin/sort resident + halo(local) but
     Only need to fill neighbors for resident
   **/
   void find(const IndexSpan& particles_to_bin_span, const IndexSpan& particles_to_fill_span,
@@ -202,7 +202,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     this->calculate_bins(particles_to_bin_span, coords);
     this->sort_bins(particles_to_bin_count);
     this->find_bin_bounds(particles_to_bin_count);
-    this->fill_neighbors(particles_to_bin_span, coords);
+    this->fill_neighbors(particles_to_fill_span, coords);
   }
 
   ~Neighbors()                           = default;

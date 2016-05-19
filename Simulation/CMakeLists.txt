@@ -11,6 +11,8 @@ include_directories(".")
 
 add_executable(sph ${SRC_FILES})
 
+add_definitions(-Wall)
+
 # For when compiling without NVCC
 add_definitions(-DNO_CUDA -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
 MESSAGE("DISABLING CUDA")
