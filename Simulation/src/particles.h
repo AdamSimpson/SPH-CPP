@@ -128,7 +128,8 @@ public:
   /**
     @brief Set initial fluid particles to current node, filling 2D aabb
   **/
-  std::size_t construct_initial_fluid(const AABB<Real,2>& aabb) {
+  std::size_t construct_fluid(const AABB<Real,2>& aabb,
+                              const Vec<Real,Dim> velocity = Vec<Real,Dim>{(Real)0.0}) {
     // |--|--|--|
     // -o--o--o-
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(aabb, parameters_.particle_rest_spacing());
@@ -140,8 +141,7 @@ public:
                                parameters_.particle_rest_spacing()    +
                                aabb.min;
         coord += parameters_.particle_rest_spacing()/static_cast<Real>(2.0);
-        auto zero_vector = Vec<Real,Dim>{0.0};
-        this->add(coord, coord, zero_vector);
+        this->add(coord, coord, velocity);
       }  // x
     } // y
 
@@ -151,7 +151,8 @@ public:
   /**
     @brief Set initial fluid particles to current node, filling 3D aabb
   **/
-  std::size_t construct_initial_fluid(const AABB<Real,3>& aabb) {
+  std::size_t construct_fluid(const AABB<Real,3>& aabb,
+                              const Vec<Real,Dim> velocity = Vec<Real,Dim>{(Real)0.0}) {
     // |--|--|--|
     // -o--o--o-
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(aabb, parameters_.particle_rest_spacing());
@@ -166,8 +167,7 @@ public:
                                  parameters_.particle_rest_spacing()    +
                                  aabb.min;
           coord += parameters_.particle_rest_spacing()/static_cast<Real>(2.0);
-          auto zero_vector = Vec<Real,Dim>{0.0};
-          this->add(coord, coord, zero_vector);
+          this->add(coord, coord, velocity);
         }  // x
       } // y
     } // z

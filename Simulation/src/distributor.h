@@ -78,9 +78,9 @@ public:
     this->set_domain_bounds(parameters.initial_fluid(),
                             parameters.boundary());
     edge_width_ = 1.2*parameters.smoothing_radius();
-    this->distribute_initial_fluid(parameters.initial_fluid(),
-                                   particles,
-                                   parameters.particle_rest_spacing());
+    this->distribute_fluid(parameters.initial_fluid(),
+                           particles,
+                           parameters.particle_rest_spacing());
   }
 
   /**
@@ -274,49 +274,52 @@ public:
 
   /**
     Construct water volume spread across multiple domains
+    This function requires the domain bounds to be set
   **/
-  void distribute_initial_fluid(const AABB<Real,Dim>& global_fluid,
-                                Particles<Real,Dim> & particles,
-                                Real particle_rest_spacing) {
+  void distribute_fluid(const AABB<Real,Dim>& global_fluid,
+                        Particles<Real,Dim> & particles,
+                        Real particle_rest_spacing,
+                        const Vec<Real,Dim> velocity = Vec<Real,Dim>{(Real)0.0}) {
     // Create a bounding box with length dimension that coincides with particle spacing
     // |--|--|--|
     // -o--o--o-
     Real spacing = particle_rest_spacing;
     AABB<Real,Dim> local_fluid{global_fluid};
-    size_t global_particle_count_x = floor(global_fluid.length()/spacing);
 
-    // Append particles on last rank if they can't be evenly distributed
-    int particle_count_x = global_particle_count_x / comm_compute_.size();
+    // If local_fluid not in domain then return
+    bool contains_fluid_start = (global_fluid.min.x >= domain_.begin) &&
+                                (global_fluid.min.x <= domain_.end);
+    bool contains_fluid_end   = (global_fluid.max.x >= domain_.begin) &&
+                                (global_fluid.max.x <= domain_.end);
+    bool filled_with_fluid    = (global_fluid.min.x <= domain_.begin) &&
+                                (global_fluid.max.x >= domain_.begin);
+    if(!contains_fluid_start && !contains_fluid_end && !filled_with_fluid)
+      return;
 
-    // Base length of fluid for each node, with the exception of the last node
-    Real base_fluid_length = particle_count_x * spacing;
+    // Ensure that particle spacing is consistant at boundaries
+    int x_count_previous = std::max((Real)0.0, std::floor((domain_.begin - global_fluid.min.x)/(Real)spacing));
+    local_fluid.min.x = global_fluid.min.x + x_count_previous * spacing;
 
-    if(this->is_last_domain()) {
-      int remaining = global_particle_count_x - (particle_count_x*comm_compute_.size());
-      particle_count_x += remaining;
-    }
-
-    if(particle_count_x < 4)
-      throw std::runtime_error("Less than four particles in x dimension!");
-
-    // Length of fluid for current process
-    Real local_fluid_length = (particle_count_x) * spacing;
-
-    local_fluid.min.x = global_fluid.min.x + base_fluid_length*comm_compute_.rank();
-
-    // small delta added to ensure no round off error
-    local_fluid.max.x = local_fluid.min.x + local_fluid_length + spacing/10.0;
+    if(contains_fluid_end)
+      local_fluid.max.x = global_fluid.max.x;
+    else
+      local_fluid.max.x = domain_.end;
 
     // Fill AABB with particles
-    resident_count_ = particles.construct_initial_fluid(local_fluid);
+    auto particles_added = particles.construct_fluid(local_fluid, velocity);
+    resident_count_ += particles_added;
+  }
+
+  // Incoming OOB particles will be appended so we remove old halo particles first
+  void invalidate_halo(Particles<Real,Dim> & particles) {
+    this->remove_halo_particles(particles);
   }
 
   /**
+    invalidate_halo must be called before domain_sync
     Sync domains: transfer out of bounds particles and update halo
   **/
   void domain_sync(Particles<Real,Dim> & particles){
-    // Incoming OOB particles will be appended so we remove old halo particles first
-    this->remove_halo_particles(particles);
 
     this->initiate_oob_exchange(particles);
     this->finalize_oob_exchange(particles);

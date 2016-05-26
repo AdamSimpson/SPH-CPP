@@ -26,10 +26,21 @@ int main(int argc, char *argv[]) {
 
     // Main time step loop
     while(parameters.simulation_active()) {
-      if(frame%2)
+      if(frame % frames_per_update == 0)
         distributor.sync_from_renderer(parameters);
 
       if(parameters.compute_active()) {
+
+        // Add a few particles
+        if(frame%5 == 0) {
+          AABB<float, three_dimensional> add_volume;
+          add_volume.min = Vec<float, three_dimensional>{0.1, 2.0, 0.7};
+          add_volume.max = Vec<float, three_dimensional>{0.1 + parameters.particle_rest_spacing(), 2.5, 1.1};
+          const auto velocity = parameters.particle_rest_spacing()/parameters.time_step()/5;
+          distributor.distribute_fluid(add_volume, particles, parameters.particle_rest_spacing(),
+                                        Vec<float,3>{velocity, 0.0, 0.0});
+        }
+
         particles.apply_external_forces(distributor.resident_span());
         particles.predict_positions(distributor.resident_span());
 
@@ -73,12 +84,13 @@ int main(int argc, char *argv[]) {
         particles.update_positions(distributor.resident_span());
 
         // Needs to be done once per rendered frame
-        if(frame % frames_per_update)
+        if(frame % frames_per_update == 0)
           distributor.sync_to_renderer(particles);
 
         frame++;
-      }
 
+        distributor.invalidate_halo(particles);
+      }
     }
 
   } catch(std::exception const& exception) {
