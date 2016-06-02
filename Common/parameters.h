@@ -22,16 +22,20 @@ template<typename Real, Dimension Dim>
 class Parameters {
 public:
 
+  // @todo make this private - should use public functions to query state of Mode
   enum Mode {
-    ACTIVE,
-    PAUSE_COMPUTE,
-    EXIT
+    EDIT_VIEW      = (1 << 0),
+    EMITTER_ACTIVE = (1 << 1),
+    EDIT_EMITTER   = (1 << 2),
+    EDIT_MOVER     = (1 << 3),
+    PAUSE_COMPUTE  = (1 << 4),
+    EXIT           = (1 << 5),
   };
 
   /**
     @brief  Construct initial parameters from file_name .INI file
   **/
-  Parameters(const std::string& file_name): simulation_mode_{Mode::ACTIVE} {
+  Parameters(const std::string& file_name): simulation_mode_{Mode::EDIT_VIEW} {
     this->read_INI(file_name);
     this->derive_from_input();
   };
@@ -83,6 +87,11 @@ public:
     rest_mass_ = 1.0; //mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
     Real particle_volume = /*4.0/3.0 * M_PI **/ pow(particle_rest_spacing_ , 3.0);
     rest_density_ = rest_mass_ / particle_volume;
+
+    emitter_center_ = boundary_.center();
+    emitter_velocity_ = Vec<Real,Dim>{1.0, 0.0, 0.0};
+
+    std::cout<<"emitter_center: "<<emitter_center_<<std::endl;
 
     std::cout<<"Max speed must be reset if smoothing radius changes\n";
     max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_; // CFL
@@ -246,7 +255,7 @@ public:
   }
 
   bool simulation_active() const {
-    return simulation_mode_ != Mode::EXIT;
+    return !(simulation_mode_ & Mode::EXIT);
   }
 
   void exit_simulation() {
@@ -254,19 +263,76 @@ public:
   }
 
   bool compute_active() const {
-    return simulation_mode_ != Mode::PAUSE_COMPUTE && simulation_mode_ != Mode::EXIT;
+    return !(simulation_mode_ & Mode::PAUSE_COMPUTE) && !(simulation_mode_ & Mode::EXIT);
   }
 
-  void toggle_computation() {
-    if(simulation_mode_ == Mode::PAUSE_COMPUTE)
-      simulation_mode_ = Mode::ACTIVE;
-    else
-      simulation_mode_ = Mode::PAUSE_COMPUTE;
+  void toggle_computation_active() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::PAUSE_COMPUTE);
   }
 
+  void toggle_emitter_active() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EMITTER_ACTIVE);
+  }
+
+  void toggle_view_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_VIEW);
+  }
+
+  void disable_view_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_VIEW);
+  }
+
+  void enable_view_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_VIEW);
+  }
+
+  bool view_edit() const {
+    return simulation_mode_ & Mode::EDIT_VIEW;
+  }
+
+  bool emitter_active() const {
+    return simulation_mode_ & Mode::EMITTER_ACTIVE;
+  }
+
+  bool edit_emitter() const {
+    return simulation_mode_ & Mode::EDIT_EMITTER;
+  }
+
+  void toggle_emitter_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_EMITTER);
+  }
+
+  void disable_emitter_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_EMITTER);
+  }
+
+  void enable_emitter_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_EMITTER);
+  }
+
+  const Vec<Real,Dim>& emitter_center() const {
+    return emitter_center_;
+  }
+
+  const Vec<Real,Dim>& emitter_velocity() const {
+    return emitter_velocity_;
+  }
+
+  const Vec<Real,Dim>& mover_center() const {
+    return mover_center_;
+  }
+
+  void toggle_mover_edit() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_MOVER);
+  }
+
+  bool edit_mover() const {
+    return simulation_mode_ & Mode::EDIT_MOVER;
+  }
 
 //private:
   // Not private so we boost mpi helpers work
+  // @todo is this monster parameters struct reasonable?
   std::size_t max_particles_local_;
   std::size_t initial_global_particle_count_;
   std::size_t solve_step_count_;
@@ -286,6 +352,9 @@ public:
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
   Mode simulation_mode_;
+  Vec<Real,Dim> emitter_center_;
+  Vec<Real,Dim> emitter_velocity_;
+  Vec<Real,Dim> mover_center_;
 };
 
 /**

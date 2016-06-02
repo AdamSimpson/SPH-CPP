@@ -149,7 +149,7 @@ public:
         domain_.end -= dx;
     }
 
-    std::cout<<"bounds for rank: "<<comm_compute_.rank()<<" "<<domain_.begin<<", "<<domain_.end<<std::endl;
+//    std::cout<<"bounds for rank: "<<comm_compute_.rank()<<" "<<domain_.begin<<", "<<domain_.end<<std::endl;
   }
 
   /**
@@ -308,6 +308,24 @@ public:
     // Fill AABB with particles
     auto particles_added = particles.construct_fluid(local_fluid, velocity);
     resident_count_ += particles_added;
+  }
+
+  /**
+    Emit fluid stream
+  **/
+  void process_parameters(const Parameters<Real,Dim>& parameters,
+                          Particles<Real,Dim> & particles) {
+    if(parameters.emitter_active()) {
+      AABB<Real, three_dimensional> add_volume;
+      Vec<Real, three_dimensional> emitter_volume_extents{(Real)1.1 * parameters.particle_rest_spacing(),
+                                                          (Real)1.1 * parameters.particle_rest_spacing(),
+                                                          (Real)1.1 * parameters.particle_rest_spacing()};
+      add_volume.min = parameters.emitter_center() - (Real)0.5 * emitter_volume_extents;
+      add_volume.max = add_volume.min + emitter_volume_extents;
+      this->distribute_fluid(add_volume, particles, parameters.particle_rest_spacing(),
+                                   parameters.emitter_velocity());
+      std::cout<<"minimum: "<<add_volume.min<<"max: "<<add_volume.max<<std::endl;
+    }
   }
 
   // Incoming OOB particles will be appended so we remove old halo particles first
@@ -477,7 +495,7 @@ private:
     std::size_t send_left_index = oob_begin - begin;
     std::size_t send_right_index = oob_right_begin - begin;
 
-    std::cout<<"rank "<<comm_compute_.rank()<<" receive indices: "<<receive_left_index_<<", "<<receive_right_index_<<" send indices: "<<send_left_index<<", "<<send_right_index<<std::endl;
+//    std::cout<<"rank "<<comm_compute_.rank()<<" receive indices: "<<receive_left_index_<<", "<<receive_right_index_<<" send indices: "<<send_left_index<<", "<<send_right_index<<std::endl;
 
     requests_[0] = comm_compute_.i_recv(this->domain_to_left(), 0,
                                        &(particles.position_stars()[receive_left_index_]), max_recv_per_side, MPI_VEC_);
@@ -507,7 +525,7 @@ private:
     requests_[11] = comm_compute_.i_send(this->domain_to_right(), 2,
                                         &(particles.velocities()[send_right_index]), oob_right_count_, MPI_VEC_);
 
-   std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
+//   std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
 
   }
 
@@ -521,8 +539,8 @@ private:
     MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
     const int sent_count = oob_left_count_ + oob_right_count_;
 
-    std::cout<<"rank "<<comm_compute_.rank()<<" sent "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
-    std::cout<<"rank "<<comm_compute_.rank()<<" received "<<received_left_count<<" from "<<this->domain_to_left()<<" and "<<received_right_count<<" from "<<this->domain_to_right()<<std::endl;
+//    std::cout<<"rank "<<comm_compute_.rank()<<" sent "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
+//    std::cout<<"rank "<<comm_compute_.rank()<<" received "<<received_left_count<<" from "<<this->domain_to_left()<<" and "<<received_right_count<<" from "<<this->domain_to_right()<<std::endl;
 
     this->remove_resident_particles(particles, sent_count);
 
@@ -538,7 +556,7 @@ private:
                                  &particles.velocities()[receive_right_index_],
                                  received_right_count);
 
-    std::cout<<"rank "<<comm_compute_.rank()<<" resident count: "<<resident_count()<<" local count: "<<local_count()<<std::endl;
+//    std::cout<<"rank "<<comm_compute_.rank()<<" resident count: "<<resident_count()<<" local count: "<<local_count()<<std::endl;
   }
   /**
     Partition edge particles.

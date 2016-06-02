@@ -5,7 +5,7 @@
 #  THRUST_DEFINITIONS - Compiler switches required for using thrust
 
 find_path(THRUST_INCLUDE_DIR thrust/version.h
-    HINTS /usr/include/cuda /usr/local/include /usr/local/cuda/include)
+    HINTS /usr/include/cuda /usr/local/include /usr/local/cuda/include ../external/thrust)
 
 set(THRUST_INCLUDE_DIRS ${THRUST_INCLUDE_DIR})
 

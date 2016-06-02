@@ -64,6 +64,13 @@ public:
     return max - min;
   }
 
+  /**
+    @brief return center point of AABB
+  **/
+  Vec<Real,two_dimensional> center() const {
+    return this->min + (Real)0.5 * this->extent();
+  }
+
 };
 
 /**
@@ -115,6 +122,13 @@ public:
   **/
   Vec<Real,three_dimensional> extent() const {
     return max - min;
+  }
+
+  /**
+    @brief return center point of AABB
+  **/
+  Vec<Real,three_dimensional> center() const {
+    return this->min + (Real)0.5 * this->extent();
   }
 
   /**

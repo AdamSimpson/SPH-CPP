@@ -34,7 +34,9 @@ public:
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    SDL_GL_SetSwapInterval(true); // Enable vsync
+    bool vsync_enabled = true;
+    std::cout<< "vsync enabled: " << vsync_enabled << std::endl;
+    SDL_GL_SetSwapInterval(vsync_enabled); // Enable vsync
     window_ = SDL_CreateWindow("SPH", 0, 0, 0, 0, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN_DESKTOP);
     if(window_ == NULL)
       throw std::runtime_error("Failed to create SDL window: " + std::string(SDL_GetError()));
@@ -131,16 +133,18 @@ public:
     this->display();
   }
 
-  // @todo this should be moved into the parameters "manager" class which handles
-  // changing user parameters from a UI
   void process_input(const UserInput& user_input) {
+    if(user_input.key_was_pressed("tab") || user_input.key_was_pressed("m"))
+      parameters_.toggle_view_edit();
+
+    if(parameters_.view_edit())
+      camera_.process_input(user_input);
+
     if(user_input.key_was_pressed("escape"))
       parameters_.exit_simulation();
 
     if(user_input.key_was_pressed("p"))
-      parameters_.toggle_computation();
-
-    camera_.process_input(user_input);
+      parameters_.toggle_computation_active();
   }
 
 private:

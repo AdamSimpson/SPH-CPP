@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstddef>
 #include <memory>
+#include <vector>
 #include <type_traits>
 #include "dimension.h"
 #include "vec.h"
@@ -103,10 +104,11 @@ namespace sim { namespace mpi {
   }
 
   template <typename Real, Dimension Dim>
-  void create_parameters_type(const MPI_Datatype MPI_AABB,
+  void create_parameters_type(const MPI_Datatype MPI_VEC,
+                              const MPI_Datatype MPI_AABB,
                               MPI_Datatype& MPI_PARAMETERS) {
     typedef Parameters<Real,Dim> Parameters_type;
-    const int member_count = 19;
+    const int member_count = 22;
     MPI_Datatype types[member_count];
     MPI_Aint disps[member_count];
     int block_lengths[member_count];
@@ -191,6 +193,18 @@ namespace sim { namespace mpi {
     block_lengths[18] = 1;
     disps[18] = offsetof(Parameters_type, simulation_mode_);
 
+    types[19] = MPI_VEC;
+    block_lengths[19] = 1;
+    disps[19] = offsetof(Parameters_type, emitter_center_);
+
+    types[20] = MPI_VEC;
+    block_lengths[20] = 1;
+    disps[20] = offsetof(Parameters_type, emitter_velocity_);
+
+    types[21] = MPI_VEC;
+    block_lengths[21] = 1;
+    disps[21] = offsetof(Parameters_type, mover_center_);
+
     int err;
     err = MPI_Type_create_struct(member_count, block_lengths, disps, types, &MPI_PARAMETERS);
     check_return(err);
@@ -205,7 +219,7 @@ namespace sim { namespace mpi {
 
     create_vec_type<Real,Dim>(MPI_VEC);
     create_aabb_type<Real,Dim>(MPI_VEC, MPI_AABB);
-    create_parameters_type<Real,Dim>(MPI_AABB, MPI_PARAMETERS);
+    create_parameters_type<Real,Dim>(MPI_VEC, MPI_AABB, MPI_PARAMETERS);
   }
 
   void free_mpi_types(MPI_Datatype& MPI_VEC,

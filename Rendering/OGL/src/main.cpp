@@ -7,9 +7,15 @@
 #include "visualizer.h"
 #include "distributor.h"
 #include "particles.h"
+#include "parameters.h"
+#include "emitter.h"
+#include "mover.h"
 #include "overlay.h"
 
-template<typename Real, Dimension Dim>
+// Set simulation values
+using Real = float;
+static const Dimension Dim = three_dimensional;
+
 double update_fps(std::clock_t &clock_start, Overlay<Real,Dim>& overlay) {
   double fps;
   fps = 1.0 / ( (std::clock() - clock_start) / (double) CLOCKS_PER_SEC);
@@ -19,18 +25,22 @@ double update_fps(std::clock_t &clock_start, Overlay<Real,Dim>& overlay) {
 
 int main(int argc, char *argv[]) {
   try {
-    Distributor<float, three_dimensional> distributor;
-    Parameters<float,three_dimensional> parameters{"../../../Common/params.ini"};
+    Distributor<Real, Dim> distributor;
+    Parameters<Real, Dim> parameters{"../../../Common/params.ini"};
+    Emitter<Real, Dim> emitter{parameters};
     UserInput user_input;
+
     // @todo remove parameters from visualizer and just pass in world boundary
-    Visualizer<float,three_dimensional> visualizer{parameters};
+    Visualizer<Real, Dim> visualizer{parameters};
     Particles particles;
-    Container container{static_cast<AABB<float, three_dimensional>>(parameters.boundary_) };
-    Overlay<float, three_dimensional> overlay{parameters, visualizer.screen_pixel_dimensions()};
+    Container container{static_cast<AABB<Real, Dim>>(parameters.boundary_) };
+    Overlay<Real, Dim> overlay{parameters, visualizer.screen_pixel_dimensions()};
+    Mover<Real, Dim> mover{parameters};
 
     visualizer.add_drawable(particles);
     visualizer.add_drawable(container);
     visualizer.add_drawable(overlay);
+    visualizer.add_drawable(mover);
 
     std::future<void> compute_future;
     std::clock_t clock_start{std::clock()};
@@ -38,6 +48,8 @@ int main(int argc, char *argv[]) {
     while(parameters.simulation_active()) {
       user_input.update();
       visualizer.process_input(user_input);
+      emitter.process_input(user_input);
+      mover.process_input(user_input);
       overlay.process_input(user_input);
 
       // Sync compute and render processes if neccessary

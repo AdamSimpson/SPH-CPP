@@ -66,10 +66,12 @@ public:
   sim::Array<Vec<Real,Dim>>& velocities() { return velocities_; }
   sim::Array<Real>& densities() { return densities_; }
   sim::Array<Real>& lambdas() { return lambdas_; }
+  sim::Array<Vec<Real,Dim>>& scratch() { return scratch_; }
 
   const sim::Array<Vec<Real,Dim>>& positions() const { return positions_; }
   const sim::Array<Vec<Real,Dim>>& position_stars() const { return position_stars_; }
   const sim::Array<Vec<Real,Dim>>& velocities() const { return velocities_; }
+  const sim::Array<Vec<Real,Dim>>& scratch() const { return scratch_; }
 
   /**
     Remove particles from end of array
@@ -93,6 +95,9 @@ public:
            const Vec<Real,Dim>& position_stars,
            const Vec<Real,Dim>& velocities) {
 
+    // @todo: Should assert all are same size
+    // @todo: Should assert there is enough space
+
     positions_.push_back(positions);
     positions_previous_.push_back(positions);
     position_stars_.push_back(position_stars);
@@ -112,6 +117,8 @@ public:
            const Vec<Real,Dim>* position_stars,
            const Vec<Real,Dim>* velocities,
            std::size_t count) {
+
+    // @todo: Should assert there is enough space
 
     positions_.push_back(positions, count);
     positions_previous_.push_back(positions, count);
@@ -174,7 +181,6 @@ public:
     return product(particle_counts);
   }
 
-
   void find_neighbors(IndexSpan to_bin_count, IndexSpan to_fill_count) {
     neighbors_.find(to_bin_count, to_fill_count, position_stars_.data());
   }
@@ -211,7 +217,7 @@ public:
 //                             + Vec<Real,Dim>(0.0, -static_cast<Real>(4.0/9.0)*dt*dt * static_cast<Real>(9.8), 0.0);
 
       apply_boundary_conditions(position_star_p,
-                                parameters_.boundary());
+                                parameters_);
       position_stars_[p] = position_star_p;
     });
   }
@@ -234,12 +240,13 @@ public:
         }
         densities_[p] = density;
     });
-
+/*
     // This is node level only
     Real min_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 10000000, thrust::minimum<Real>());
     Real max_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::maximum<Real>());
     Real avg_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::plus<Real>()) / span.end;
     std::cout<<"min, max avg Density: "<<min_density<<", "<<max_density<<","<<avg_density<<std::endl;
+*/
   }
 
   void compute_pressure_lambdas(IndexSpan span) {
@@ -366,8 +373,7 @@ public:
         // scratch contains delta positions
         const auto position_star_p_old = position_stars_[p];
         auto position_star_p_new = position_stars_[p] + scratch_[p];
-        apply_boundary_conditions(position_star_p_new,
-                                  parameters_.boundary());
+        apply_boundary_conditions(position_star_p_new, parameters_);
         position_stars_[p] = position_star_p_new;
       });
   };
@@ -516,6 +522,19 @@ private:
 };
 
 template<typename Real, Dimension Dim>
-void apply_boundary_conditions(Vec<Real,Dim>& position, const AABB<Real,Dim>& boundary) {
+void apply_boundary_conditions(Vec<Real,Dim>& position,
+                               const Parameters<Real,Dim>& parameters) {
+  // Push outside of mover sphere
+  const float mover_radius = 0.2;
+  const auto boundary = parameters.boundary();
+  const Vec<Real,Dim> mover_center = parameters.mover_center();
+  Real dr_squared = magnitude_squared(position - mover_center);
+  if(dr_squared < mover_radius * mover_radius) {
+    Real dr = sqrt(dr_squared);
+    position += (mover_radius - dr) * (position - mover_center) / dr;
+  }
+
+
+  // Clamp inside boundary
   clamp_in_place(position, boundary.min, boundary.max);
 }

@@ -451,8 +451,16 @@ T magnitude(const Vec<T,n>& vec) {
   @brief reciprical vector magnitude
 **/
 template<typename T, int n>
-T inverse_magnitude(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
-  return static_cast<T>(1.0) / std::sqrt(magnitude_squared(lhs, rhs));
+T inverse_magnitude(const Vec<T,n>& vec) {
+  return static_cast<T>(1.0) / std::sqrt(magnitude_squared(vec));
+}
+
+/**
+  @brief normalize vector
+**/
+template<typename T, int n>
+Vec<T,n> normalize(const Vec<T,n>& vec) {
+  return inverse_magnitude(vec) * vec;
 }
 
 /**

@@ -1,0 +1,7 @@
+cd Rendering/OGL
+cd build
+make
+cd ../../../Simulation
+cd build
+make
+cd ../..
