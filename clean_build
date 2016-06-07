@@ -1,0 +1,9 @@
+cd Rendering/OGL
+rm -rf build && mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+cd ../../../Simulation
+rm -rf build && mkdir build && cd build
+THRUST_INCLUDE_DIRS=../external/thrust/ cmake -DCMAKE_BUILD_TYPE=Release ..
+make
+cd ../..

@@ -210,7 +210,7 @@ public:
     thrust::counting_iterator<std::size_t> end(span.end);
 
     thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
-      const auto position_p = positions_[p];
+      auto position_p = positions_[p];
       auto position_star_p = position_p + (velocities_[p] * dt);
 //      auto position_star_p = static_cast<Real>(4.0/3.0) * position_p - static_cast<Real>(1.0/3.0) * positions_previous_[p]
 //                             + static_cast<Real>(8.0/9.0) * dt * velocities_[p] - static_cast<Real>(2.0/9.0) * dt * velocities_previous_[p]
@@ -219,6 +219,11 @@ public:
       apply_boundary_conditions(position_star_p,
                                 parameters_);
       position_stars_[p] = position_star_p;
+
+      // @todo only update position_p if position_star_p is updated
+      apply_boundary_conditions(position_p,
+                                parameters_);
+      positions_[p] = position_p;
     });
   }
 
@@ -359,7 +364,6 @@ public:
         Vec<Real,Dim> dp{0.0};
         for(const std::size_t q : neighbors_[p]) {
           dp += (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p], position_stars_[q]);
-
         }
         scratch_[p] = (Real)1.0/parameters_.rest_density() * dp;
       });

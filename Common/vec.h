@@ -444,7 +444,7 @@ T magnitude_squared(const Vec<T,n>& vec) {
 **/
 template<typename T, int n>
 T magnitude(const Vec<T,n>& vec) {
-  return std::sqrt(magnitude_squared(vec));
+  return sqrt(magnitude_squared(vec));
 }
 
 /**
@@ -452,7 +452,7 @@ T magnitude(const Vec<T,n>& vec) {
 **/
 template<typename T, int n>
 T inverse_magnitude(const Vec<T,n>& vec) {
-  return static_cast<T>(1.0) / std::sqrt(magnitude_squared(vec));
+  return static_cast<T>(1.0) / sqrt(magnitude_squared(vec));
 }
 
 /**
@@ -470,7 +470,7 @@ template<typename T, int n>
 Vec<T,n> floor(const Vec<T,n>& vec) {
    Vec<T,n> floor_vec;
    for(int i=0; i<n; ++i)
-     floor_vec[i] = std::floor(vec[i]);
+     floor_vec[i] = floor(vec[i]);
 
   return floor_vec;
 }

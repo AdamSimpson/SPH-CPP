@@ -1,7 +1,7 @@
 #include "dimension.h"
 #include <exception>
 #include <iostream>
-#include <ctime>
+#include <chrono>
 
 #include "user_input.h"
 #include "visualizer.h"
@@ -16,11 +16,14 @@
 using Real = float;
 static const Dimension Dim = three_dimensional;
 
-double update_fps(std::clock_t &clock_start, Overlay<Real,Dim>& overlay) {
+double update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &clock_start,
+                  Overlay<Real,Dim>& overlay) {
   double fps;
-  fps = 1.0 / ( (std::clock() - clock_start) / (double) CLOCKS_PER_SEC);
-  clock_start = std::clock();
+  auto clock_end{std::chrono::high_resolution_clock::now()};
+  fps = 1.0 / std::chrono::duration<double>(clock_end - clock_start).count();
+  clock_start = clock_end;
   overlay.set_fps(fps);
+  std::cout<<"Compute FPS: "<<fps<<std::endl;
 }
 
 int main(int argc, char *argv[]) {
@@ -43,13 +46,12 @@ int main(int argc, char *argv[]) {
     visualizer.add_drawable(mover);
 
     std::future<void> compute_future;
-    std::clock_t clock_start{std::clock()};
+    auto clock_start{std::chrono::high_resolution_clock::now()};
 
     while(parameters.simulation_active()) {
       user_input.update();
       visualizer.process_input(user_input);
       emitter.process_input(user_input);
-      mover.process_input(user_input);
       overlay.process_input(user_input);
 
       // Sync compute and render processes if neccessary
@@ -63,6 +65,8 @@ int main(int argc, char *argv[]) {
 
         // launch request for updated compute data asynchronously
         compute_future = std::async(std::launch::async, [&] {
+          // Only update mover each compute time step
+          mover.process_input(user_input);
           distributor.sync_to_computes(parameters);
           distributor.sync_particles();
         });
