@@ -1,33 +1,50 @@
 #pragma once
 
-#if !defined(NO_CUDA)
+#if defined(CUDA)
 #include "cuda_runtime.h"
 #endif
 
+#include "managed_allocation.h"
+#include <memory>
+#include "device.h"
 #include <cstddef>
+#include <stdexcept>
 
 /**
-   Simple array like class to handle pool of managed memory
+   Simple array/vector like class to handle pool of managed memory
  **/
 namespace sim {
 
 template <typename T>
-class Array {
-public:
-  Array(std::size_t capacity) : capacity_{capacity}, size_{0} {
-    #if defined(NO_CUDA)
-    data_ = new T [capacity];
+class Array: public ManagedAllocation {
+  // @todo constexpr in c++14
+  /*constexpr*/ T*  alloc_data() {
+    #if defined(CUDA)
+    T* data;
+    auto err = cudaMallocManaged(&data, sizeof(T)*capacity_);
+    if(err != cudaSuccess){
+      throw std::runtime_error("error allocating managed memory");
+    }
+    return data;
     #else
-    cudaMallocManaged(&data_, capacity_*sizeof(T));
+    return new T[capacity_];
     #endif
   }
 
-  ~Array() {
-    #if defined(NO_CUDA)
-    free(data_);
+  /*constexpr C++14*/ void free_data() {
+    #if defined(CUDA)
+    cudaFree((void*)data_);
     #else
-    cudaFree(data_);
+    delete[] data_;
     #endif
+  }
+
+public:
+  Array(std::size_t capacity) : capacity_{capacity}, size_{0}, data_{alloc_data()}
+  {}
+
+  ~Array() {
+    free_data();
   }
 
   /**
@@ -73,25 +90,31 @@ public:
     size_ -= pop_count;
   }
 
+  DEVICE_CALLABLE
   T* data() {
     return this->data_;
   }
 
+  DEVICE_CALLABLE
   T* data() const {
     return this->data_;
   }
 
+  DEVICE_CALLABLE
   T& operator[] (const std::size_t index) {
     return data_[index];
   }
 
+  DEVICE_CALLABLE
   const T& operator[] (const std::size_t index) const {
     return data_[index];
   }
 
-private:
-  T* data_;
+//private:
+// DEVICE_CALLABLE cant use private member variables
+public:
   std::size_t capacity_;
   std::size_t size_;
+  T* data_;
 };
 }

@@ -3,27 +3,35 @@ project(sph)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../Common/CMake/)
 Message(${CMAKE_MODULE_PATH})
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 14) # Doesn't work with NVCC
 set(CXX_STANDARD_REQUIRED TRUE)
 
-file(GLOB SRC_FILES src/*.cpp)
-include_directories(".")
-
-add_executable(sph ${SRC_FILES})
+file(GLOB SRC_FILES src/*.cu)
 
 add_definitions(-Wall)
 
-# For when compiling without NVCC
-add_definitions(-DNO_CUDA -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP)
-MESSAGE("DISABLING CUDA")
+include_directories(".")
+include_directories(sph, ${CMAKE_CURRENT_SOURCE_DIR}/../Common)
 
-find_package(OpenMP)
-if (OPENMP_FOUND)
-    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+# Setup for CUDA
+if(${CUDA})
+  Message("Enabling CUDA")
+  find_package(CUDA REQUIRED)
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-DCUDA -ccbin /usr/bin/g++-5 --expt-extended-lambda --expt-relaxed-constexpr --std=c++11)
+  cuda_add_executable(sph ${SRC_FILES})
 endif()
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR}/../Common)
+# setup for OpenMP
+if(${OPENMP})
+  Message("Enabling OpenMP")
+  find_package(OpenMP REQUIRED)
+  set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+  set_source_files_properties(${SRC_FILES} PROPERTIES LANGUAGE CXX)
+  add_executable(sph ${SRC_FILES})
+  add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP")
+  set_target_properties(sph PROPERTIES LINKER_LANGUAGE CXX)
+endif()
 
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)

@@ -4,6 +4,7 @@
 #include <utility>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include "vec.h"
 #include "utility_math.h"
 #include "particles.h"
@@ -12,8 +13,8 @@
 #include <thrust/iterator/zip_iterator.h>
 #include <thrust/partition.h>
 #include "parameters.h"
-//#include "boost_mpi_optimizations.h"
 #include "mpi++.h"
+#include "device.h"
 
 /***
   The distributor is responsible for all domain-to-domain communication as
@@ -60,7 +61,6 @@ public:
                   halo_count_right_{0},
                   receive_left_index_{0},
                   receive_right_index_{0} {
-
                     sim::mpi::create_mpi_types<Real,Dim>(MPI_VEC_, MPI_PARAMETERS_);
                   }
 
@@ -80,7 +80,8 @@ public:
     edge_width_ = 1.2*parameters.smoothing_radius();
     this->distribute_fluid(parameters.initial_fluid(),
                            particles,
-                           parameters.particle_rest_spacing());
+                           parameters.particle_rest_spacing(),
+                           Vec<Real,Dim>{(Real)0.0});
   }
 
   /**
@@ -275,16 +276,17 @@ public:
   /**
     Construct water volume spread across multiple domains
     This function requires the domain bounds to be set
+    @todo, this is overcomplicated and each rank should just construct the fluid and reject out of bounds particles
   **/
   void distribute_fluid(const AABB<Real,Dim>& global_fluid,
                         Particles<Real,Dim> & particles,
                         Real particle_rest_spacing,
-                        const Vec<Real,Dim> velocity = Vec<Real,Dim>{(Real)0.0}) {
+                        const Vec<Real,Dim> velocity) {
     // Create a bounding box with length dimension that coincides with particle spacing
     // |--|--|--|
     // -o--o--o-
     Real spacing = particle_rest_spacing;
-    AABB<Real,Dim> local_fluid{global_fluid};
+    AABB<Real,Dim> local_fluid = global_fluid;
 
     // If local_fluid not in domain then return
     bool contains_fluid_start = (global_fluid.min.x >= domain_.begin) &&
@@ -398,15 +400,20 @@ public:
     sim::mpi::wait_all(requests_, 4, statuses);
   }
 
-private:
+public:
+// @todo wait for nvidia to allow private access
+// currently DEVICE_CALLABLE lambdas don't allow private access
+// so we just make it public....ya!
+// private:
+
   const sim::mpi::Environment environment_;
   const sim::mpi::Communicator comm_world_;          /**< world communicator **/
-  const sim::mpi::Communicator comm_compute_;  /**< compute subset of simulation **/
+  const sim::mpi::Communicator comm_compute_;        /**< compute subset of simulation **/
   Vec<Real,2>  domain_;                              /** x coordinate of domain domain range **/
   Real edge_width_;
 
   std::size_t resident_count_;
-  std::size_t edge_left_count_;
+    std::size_t edge_left_count_;
   std::size_t edge_right_count_;
   std::size_t halo_count_left_;
   std::size_t halo_count_right_;
@@ -472,18 +479,24 @@ private:
                                                                     particles.velocities().data()));
     const auto end = begin + this->resident_count_;
 
+    // These must be unpacked as domain isn't available in lambda
+    const auto domain_begin = domain_.begin;
+    const auto domain_end = domain_.end;
+
     // Move oob-left/right particles to end of arrays
-    auto oob_begin = thrust::partition(thrust::device, begin, end, [=] (const Tuple& tuple) {
+    auto oob_begin = thrust::partition(thrust::device, begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
-      return (x_star >= domain_.begin && x_star <= domain_.end); // True if not OOB
+      return (x_star >= domain_begin && x_star <= domain_end); // True if not OOB
     });
     // Move oob-right to end of array, arrays now {staying,oob-left,oob-right}
-    auto oob_right_begin = thrust::partition(thrust::device, oob_begin, end, [=] (const Tuple& tuple) {
+    auto oob_right_begin = thrust::partition(thrust::device, oob_begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
-      return (x_star <= domain_.begin); // True if oob-left
+      return (x_star <= domain_begin); // True if oob-left
     });
+
+    cudaDeviceSynchronize();
 
     oob_left_count_  = oob_right_begin - oob_begin;
     oob_right_count_ = end - oob_right_begin;
@@ -526,7 +539,6 @@ private:
                                         &(particles.velocities()[send_right_index]), oob_right_count_, MPI_VEC_);
 
 //   std::cout<<"rank : "<<comm_compute_.rank()<<" sending "<<oob_left_count_<<" to rank "<<this->domain_to_left()<<" and "<<oob_right_count_<<" to rank "<<this->domain_to_right()<<std::endl;
-
   }
 
   void finalize_oob_exchange(Particles<Real,Dim> & particles) {
@@ -576,17 +588,19 @@ private:
     const auto edge_right = domain_.end - edge_width_;
 
     // Move left/right edge particles to end of arrays
-    auto edge_begin = thrust::partition(thrust::device, begin, end, [=] (const Tuple& tuple) {
+    auto edge_begin = thrust::partition(thrust::device, begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star >= edge_left && x_star <= edge_right ); // True if not edge
     });
     // Move right edge to end of array, arrays now {interior, edge-left, edge-right}
-    auto edge_right_begin = thrust::partition(thrust::device, edge_begin, end, [=] (const Tuple& tuple) {
+    auto edge_right_begin = thrust::partition(thrust::device, edge_begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star <= edge_left); // True if edge-left
     });
+
+    cudaDeviceSynchronize();
 
     edge_left_count_ = edge_right_begin - edge_begin;
     edge_right_count_ = end - edge_right_begin;

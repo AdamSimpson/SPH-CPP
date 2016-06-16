@@ -1,8 +1,10 @@
 #pragma once
 
+#include "managed_allocation.h"
 #include "dimension.h"
 #include "vec.h"
 #include "aabb.h"
+#include "device.h"
 
 #include <cmath>
 #include <string>
@@ -19,7 +21,7 @@ Vec<Real,Dim> to_real_vec(const std::string& input_string);
   @brief Simulation wide tunable parameters
 **/
 template<typename Real, Dimension Dim>
-class Parameters {
+class Parameters: public ManagedAllocation {
 public:
 
   // @todo make this private - should use public functions to query state of Mode
@@ -108,6 +110,7 @@ public:
   /**
     @return maximum node level particle count
   **/
+  DEVICE_CALLABLE
   std::size_t max_particles_local() const {
     return max_particles_local_;
   }
@@ -122,6 +125,7 @@ public:
   /**
     Get Initial requested global particle count
   **/
+  DEVICE_CALLABLE
   std::size_t initial_global_particle_count() const {
     return initial_global_particle_count_;
   }
@@ -129,20 +133,23 @@ public:
   /**
     @return Initial fluid configuration as AABB
   **/
-  AABB<Real,Dim> initial_fluid() const {
+  DEVICE_CALLABLE
+  const AABB<Real,Dim>& initial_fluid() const {
     return initial_fluid_;
   }
 
   /**
     @return Global boundary as AABB
   **/
-  AABB<Real,Dim> boundary() const {
+  DEVICE_CALLABLE
+  const AABB<Real,Dim>& boundary() const {
     return boundary_;
   }
 
   /**
     @return Rest spacing of particles
   **/
+  DEVICE_CALLABLE
   Real particle_rest_spacing() const {
     return particle_rest_spacing_;
   }
@@ -150,14 +157,17 @@ public:
   /**
     @return smoothing radius for particles
   **/
+  DEVICE_CALLABLE
   Real smoothing_radius() const {
     return smoothing_radius_;
   }
 
+  DEVICE_CALLABLE
   void increase_smoothing_radius() {
     smoothing_radius_ += 0.1;
   }
 
+  DEVICE_CALLABLE
   void decrease_smoothing_radius() {
     smoothing_radius_ -= 0.1;
   }
@@ -165,14 +175,17 @@ public:
   /**
     @return Gravitational acceleration magnitude
   **/
+  DEVICE_CALLABLE
   Real gravity() const {
     return gravity_;
   }
 
+  DEVICE_CALLABLE
   void increase_gravity() {
     gravity_ += 0.5;
   }
 
+  DEVICE_CALLABLE
   void decrease_gravity() {
     gravity_ -= 0.5;
   }
@@ -180,6 +193,7 @@ public:
   /**
     @return particle radius
   **/
+  DEVICE_CALLABLE
   Real particle_radius() const {
     return particle_radius_;
   }
@@ -187,6 +201,7 @@ public:
   /**
     @return time step size
   **/
+  DEVICE_CALLABLE
   Real time_step() const {
     return time_step_;
   }
@@ -194,138 +209,172 @@ public:
   /**
      @return solve step count
    **/
+  DEVICE_CALLABLE
   std::size_t solve_step_count() const {
     return solve_step_count_;
   }
 
+  DEVICE_CALLABLE
   Real rest_mass() const {
     return rest_mass_;
   }
 
+  DEVICE_CALLABLE
   Real rest_density() const {
     return rest_density_;
   }
 
+  DEVICE_CALLABLE
   void increase_rest_density() {
     rest_density_ += 50.0;
   }
 
+  DEVICE_CALLABLE
   void decrease_rest_density() {
     rest_density_ -=50.0;
   }
 
+  DEVICE_CALLABLE
   Real lambda_epsilon() const {
     return lambda_epsilon_;
   }
 
+  DEVICE_CALLABLE
   Real k_stiff() const {
     return k_stiff_;
   }
 
+  DEVICE_CALLABLE
   Real max_speed() const {
     return max_speed_;
   }
 
+  DEVICE_CALLABLE
   Real gamma() const {
     return gamma_;
   }
 
+  DEVICE_CALLABLE
   void increase_gamma() {
     gamma_ += 100.0;
   }
 
+  DEVICE_CALLABLE
   void decrease_gamma() {
     gamma_ -= 100.0;
   }
 
+  DEVICE_CALLABLE
   Real visc_c() const {
     return visc_c_;
   }
 
+  DEVICE_CALLABLE
   void increase_visc_c() {
     visc_c_ += 0.01;
   }
 
+  DEVICE_CALLABLE
   void decrease_visc_c() {
     visc_c_ -= 0.01;
   }
 
+  DEVICE_CALLABLE
   Real vorticity_coef() const {
     return vorticity_coef_;
   }
 
+  DEVICE_CALLABLE
   bool simulation_active() const {
     return !(simulation_mode_ & Mode::EXIT);
   }
 
+  DEVICE_CALLABLE
   void exit_simulation() {
     simulation_mode_ = Mode::EXIT;
   }
 
+  DEVICE_CALLABLE
   bool compute_active() const {
     return !(simulation_mode_ & Mode::PAUSE_COMPUTE) && !(simulation_mode_ & Mode::EXIT);
   }
 
+  DEVICE_CALLABLE
   void toggle_computation_active() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::PAUSE_COMPUTE);
   }
 
+  DEVICE_CALLABLE
   void toggle_emitter_active() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EMITTER_ACTIVE);
   }
 
+  DEVICE_CALLABLE
   void toggle_view_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_VIEW);
   }
 
+  DEVICE_CALLABLE
   void disable_view_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_VIEW);
   }
 
+  DEVICE_CALLABLE
   void enable_view_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_VIEW);
   }
 
+  DEVICE_CALLABLE
   bool view_edit() const {
     return simulation_mode_ & Mode::EDIT_VIEW;
   }
 
+  DEVICE_CALLABLE
   bool emitter_active() const {
     return simulation_mode_ & Mode::EMITTER_ACTIVE;
   }
 
+  DEVICE_CALLABLE
   bool edit_emitter() const {
     return simulation_mode_ & Mode::EDIT_EMITTER;
   }
 
+  DEVICE_CALLABLE
   void toggle_emitter_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_EMITTER);
   }
 
+  DEVICE_CALLABLE
   void disable_emitter_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_EMITTER);
   }
 
+  DEVICE_CALLABLE
   void enable_emitter_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_EMITTER);
   }
 
+  DEVICE_CALLABLE
   const Vec<Real,Dim>& emitter_center() const {
     return emitter_center_;
   }
 
+  DEVICE_CALLABLE
   const Vec<Real,Dim>& emitter_velocity() const {
     return emitter_velocity_;
   }
 
+  DEVICE_CALLABLE
   const Vec<Real,Dim>& mover_center() const {
     return mover_center_;
   }
 
+  DEVICE_CALLABLE
   void toggle_mover_edit() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_MOVER);
   }
 
+  DEVICE_CALLABLE
   bool edit_mover() const {
     return simulation_mode_ & Mode::EDIT_MOVER;
   }

@@ -1,16 +1,14 @@
 #pragma once
 
+#include "managed_allocation.h"
 #include "dimension.h"
 #include "vec.h"
 #include "array.h"
 #include "parameters.h"
 #include "neighbors.h"
 #include "kernels.h"
-#include "thrust/execution_policy.h"
-#include <thrust/iterator/zip_iterator.h>
-#include <thrust/partition.h>
-#include <thrust/iterator/counting_iterator.h>
-#include <thrust/for_each.h>
+#include "device.h"
+#include "sim_algorithms.h"
 #include <limits>
 
 /**
@@ -18,7 +16,7 @@
 **/
 
 template<typename Real, Dimension Dim>
-class Particles {
+class Particles: public ManagedAllocation {
 public:
   /**
     @brief Constructor: allocates maximum particle storage
@@ -37,6 +35,7 @@ public:
                                scratch_{max_local_count_},
                                scratch_scalar_{max_local_count_} {};
 
+  Particles()                            = delete;
   ~Particles()                           = default;
   Particles(const Particles&)            = default;
   Particles& operator=(const Particles&) = default;
@@ -192,10 +191,7 @@ public:
     const Real g = parameters_.gravity();
     const Real dt = parameters_.time_step();
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       velocities_[p].y += g*dt;
     });
   }
@@ -206,10 +202,7 @@ public:
   void predict_positions(IndexSpan span) {
     const Real dt = parameters_.time_step();
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       auto position_p = positions_[p];
       auto position_star_p = position_p + (velocities_[p] * dt);
 //      auto position_star_p = static_cast<Real>(4.0/3.0) * position_p - static_cast<Real>(1.0/3.0) * positions_previous_[p]
@@ -231,11 +224,8 @@ public:
     const Poly6<Real,Dim> W{parameters_.smoothing_radius()};
     const Real W_0 = W(static_cast<Real>(0.0));
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
     const Real mass = parameters_.rest_mass();
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         // Own contribution to density
         Real density = mass * W_0;
 
@@ -257,10 +247,7 @@ public:
   void compute_pressure_lambdas(IndexSpan span) {
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // pressure constraint
       const Real constraint = densities_[p]/parameters_.rest_density() - static_cast<Real>(1.0);
       // Clamp constraint to be positive
@@ -286,10 +273,7 @@ public:
   void compute_surface_lambdas(IndexSpan span) {
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // surface tension constraint
       Vec<Real,Dim> color{0.0};
       for(const std::size_t q : neighbors_[p]) {
@@ -315,7 +299,7 @@ public:
       scratch_scalar_[p] = constraint_tension;
     });
 
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // Calculate gradient of constraint
       Real sum_C = 0.0;
       Vec<Real,Dim> sum_gradient{0.0};
@@ -337,10 +321,7 @@ public:
   void compute_surface_dps(IndexSpan span, const int substep){
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
                                          static_cast<Real>(1.0)/static_cast<Real>(substep));
 
@@ -357,10 +338,7 @@ public:
   void compute_pressure_dps(IndexSpan span, const int substep){
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [&] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> dp{0.0};
         for(const std::size_t q : neighbors_[p]) {
           dp += (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p], position_stars_[q]);
@@ -370,10 +348,7 @@ public:
   };
 
   void update_position_stars(IndexSpan span){
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         // scratch contains delta positions
         const auto position_star_p_old = position_stars_[p];
         auto position_star_p_new = position_stars_[p] + scratch_[p];
@@ -383,10 +358,7 @@ public:
   };
 
   void update_velocities(IndexSpan span){
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
           velocities_previous_[p] = velocities_[p];
 //          Vec<Real,Dim> velocity{(static_cast<Real>(1.5)*position_stars_[p] - static_cast<Real>(2.0)*positions_[p] + static_cast<Real>(0.5)*positions_previous_[p] ) / parameters_.time_step()};
         Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p])/parameters_.time_step()};
@@ -401,27 +373,18 @@ public:
   }
 
   void update_positions(IndexSpan span){
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         positions_previous_[p]  = positions_[p];
         positions_[p] = position_stars_[p];
       });
-
   }
 
   void apply_surface_tension(IndexSpan color_field_span, IndexSpan surface_tension_span) {
     const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
     const C_Spline<Real,Dim> C{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin_color(color_field_span.begin);
-    thrust::counting_iterator<std::size_t> end_color(color_field_span.end);
-    thrust::counting_iterator<std::size_t> begin_tension(surface_tension_span.begin);
-    thrust::counting_iterator<std::size_t> end_tension(surface_tension_span.end);
-
     // Compute gradient of color field
-    thrust::for_each(thrust::device, begin_color, end_color, [=] (std::size_t p) {
+    sim::for_each_index(color_field_span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> color{0.0};
         for(const std::size_t q : neighbors_[p]) {
           color += Del_W(position_stars_[p],  position_stars_[q]) / densities_[q];
@@ -429,7 +392,7 @@ public:
         scratch_[p] = parameters_.smoothing_radius() * color;
       });
 
-    thrust::for_each(thrust::device, begin_tension, end_tension, [=] (std::size_t p) {
+    sim::for_each_index(surface_tension_span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> surface_tension_force{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
@@ -447,16 +410,12 @@ public:
 
         velocities_[p] += surface_tension_force / densities_[p] * parameters_.time_step();
       });
-
   }
 
   void apply_viscosity(IndexSpan span) {
     const Poly6<Real,Dim> W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> dv{0.0};
         for(const std::size_t q : neighbors_[p]) {
           const Real r_mag = magnitude(position_stars_[p] - position_stars_[q]);
@@ -469,10 +428,7 @@ public:
   void compute_vorticity(IndexSpan span) {
     const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> vorticity{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
@@ -487,12 +443,8 @@ public:
 
   void apply_vorticity(IndexSpan span) {
     const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
-
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
     // Scratch contains vorticity
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t p) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> eta{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
@@ -504,13 +456,14 @@ public:
         const auto N = eta / (magnitude(eta) + std::numeric_limits<Real>::epsilon());
         velocities_[p] += cross(N, scratch_[p]) * parameters_.vorticity_coef() * parameters_.time_step();
       });
+
   }
 
-private:
+// DEVICE_CALLABLE lambdas can't have private members
+//private:
   const Parameters<Real,Dim>& parameters_;
   const std::size_t max_local_count_;
   Neighbors<Real,Dim> neighbors_;
-
   sim::Array< Vec<Real,Dim> > positions_;
   sim::Array< Vec<Real,Dim> > positions_previous_;
   sim::Array< Vec<Real,Dim> > position_stars_;
@@ -526,6 +479,7 @@ private:
 };
 
 template<typename Real, Dimension Dim>
+DEVICE_CALLABLE
 void apply_boundary_conditions(Vec<Real,Dim>& position,
                                const Parameters<Real,Dim>& parameters) {
   // Push outside of mover sphere
@@ -537,7 +491,6 @@ void apply_boundary_conditions(Vec<Real,Dim>& position,
     Real dr = sqrt(dr_squared);
     position += (mover_radius - dr) * (position - mover_center) / dr;
   }
-
 
   // Clamp inside boundary
   clamp_in_place(position, boundary.min, boundary.max);

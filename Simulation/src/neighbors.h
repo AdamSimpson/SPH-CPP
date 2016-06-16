@@ -1,16 +1,18 @@
 #pragma once
 
 #include <cmath>
+#include "managed_allocation.h"
 #include "dimension.h"
 #include "array.h"
 #include "vec.h"
 #include "parameters.h"
+#include "device.h"
 #include "thrust/iterator/counting_iterator.h"
-#include "thrust/for_each.h"
 #include "thrust/iterator/zip_iterator.h"
 #include "thrust/sort.h"
 #include "thrust/binary_search.h"
 #include "thrust/execution_policy.h"
+#include "sim_algorithms.h"
 
 #define MAX_NEIGHBORS 60
 
@@ -20,16 +22,18 @@ struct NeighborBin {
 };
 
 // Iterator for range based for loops over neighbor indices
+DEVICE_CALLABLE
 const std::size_t* begin(const NeighborBin& bin) {
   return bin.neighbor_indices;
 }
 
+DEVICE_CALLABLE
 const std::size_t* end(const NeighborBin& bin) {
   return bin.neighbor_indices + bin.count;
 }
 
 template<typename Real, Dimension Dim>
-class Neighbors {
+class Neighbors: public ManagedAllocation {
 public:
   Neighbors(const Parameters<Real,Dim>& parameters): parameters_{parameters},
                                                      bin_spacing_{(Real)1.2*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
@@ -43,6 +47,7 @@ public:
                                                      neighbor_bins_{parameters.max_particles_local()} {};
 
 // Access neighbor bins with subscript operator
+DEVICE_CALLABLE
 const NeighborBin& operator[] (const std::size_t index) const {
   return neighbor_bins_[index];
 }
@@ -54,6 +59,7 @@ const NeighborBin& operator[] (const std::size_t index) const {
   be searched for without worrying about boundary conditions
 
 **/
+DEVICE_CALLABLE
 std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
   const auto point_shifted = point + bin_spacing_;
   const auto bin_location = static_cast< Vec<std::size_t, two_dimensional> >(floor(point_shifted/bin_spacing_));
@@ -67,6 +73,7 @@ std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
   be searched for without worrying about boundary conditions
 
 **/
+DEVICE_CALLABLE
 std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
   const auto point_shifted = point + bin_spacing_;
   const auto bin_location = static_cast< Vec<std::size_t, three_dimensional> >(floor(point_shifted/bin_spacing_));
@@ -78,10 +85,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
      Calclate bin value for each particle
   **/
   void calculate_bins(const IndexSpan& span, const Vec<Real,Dim>* position_stars) {
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t i) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t i) {
       bin_ids_[i] = this->calculate_bin_id(position_stars[i]);
       particle_ids_[i] = i;
       });
@@ -92,6 +96,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
    **/
   void sort_bins(std::size_t particle_count) {
     thrust::sort_by_key(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count , particle_ids_.data());
+    cudaDeviceSynchronize();
   }
 
   /**
@@ -104,15 +109,21 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     thrust::lower_bound(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count,
                         counting_begin, counting_end,
                         begin_indices_.data());
+
+    cudaDeviceSynchronize();
+
     thrust::upper_bound(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count,
                         counting_begin, counting_end,
                         end_indices_.data());
+
+    cudaDeviceSynchronize();
   }
 
   /**
      Calculate neighbor bin indices based upon particle coordinate
      @todo use array_span
    **/
+  DEVICE_CALLABLE
   void calculate_neighbor_indices(const Vec<Real, 2>& coord, std::size_t* neighbor_indices) {
     int index = 0;
     for(int i=-1; i<2; i++) {
@@ -129,6 +140,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
      Calculate neighbor bin indices based upon particle coordinate
      @todo use array_span
   **/
+  DEVICE_CALLABLE
   void calculate_neighbor_indices(const Vec<Real, 3>& coord, std::size_t* neighbor_indices) {
     int index = 0;
     for(int i=-1; i<2; i++) {
@@ -157,13 +169,12 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
 
     const Real smoothing_radius_squared = parameters_.smoothing_radius() *  parameters_.smoothing_radius();
 
-    thrust::counting_iterator<std::size_t> begin(span.begin);
-    thrust::counting_iterator<std::size_t> end(span.end);
-
-    thrust::for_each(thrust::device, begin, end, [=] (std::size_t particle_index) {
+    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t particle_index) {
         const auto position_star = position_stars[particle_index];
         auto& bin = neighbor_bins_[particle_index];
-        std::size_t neighbor_bin_indices[neighbor_count()];
+        // @todo NVCC doesn't like this constexpr
+        // std::size_t neighbor_bin_indices[neighbor_count()];
+        std::size_t neighbor_bin_indices[27];
 
         // Zero out neighbor count for current bin
         neighbor_bins_[particle_index].count = 0;
@@ -187,6 +198,8 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
           }
         }
     });
+
+    cudaDeviceSynchronize();
   }
 
   /**

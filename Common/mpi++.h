@@ -64,7 +64,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[Dim];
     int block_lengths[Dim];
 
-    assert(std::is_standard_layout<Vec_type>::value);
+    assert(std::is_trivial_layout<Vec_type>::value);
 
     for(int i=0; i<Dim; ++i) {
       types[i] = get_mpi_type<Real>();
@@ -87,7 +87,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[2];
     int block_lengths[2];
 
-    assert(std::is_standard_layout<AABB_type>::value);
+    assert(std::is_trivial_layout<AABB_type>::value);
 
     types[0] = MPI_VEC;
     types[1] = MPI_VEC;
@@ -113,7 +113,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[member_count];
     int block_lengths[member_count];
 
-    assert(std::is_standard_layout<Parameters_type>::value);
+    assert(std::is_trivial_layout<Parameters_type>::value);
 
     MPI_Datatype MPI_SIZE_T = get_mpi_size_t();
 

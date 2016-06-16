@@ -2,6 +2,7 @@
 
 #include "dimension.h"
 #include "vec.h"
+#include "device.h"
 #include <math.h>
 #include <limits>
 
@@ -19,9 +20,11 @@ template<typename Real, Dimension Dim> class C_Spline;
 template <typename Real>
 class Poly6<Real, three_dimensional> {
 public:
+  DEVICE_CALLABLE
   Poly6(const Real smoothing_radius): h_{smoothing_radius},
                                       norm_{static_cast<Real>(315.0/(64.0*M_PI*pow(h_, 9.0)))} {};
 
+  DEVICE_CALLABLE
   Real operator()(const Real r_mag) const {
     if(r_mag > h_)
       return 0.0;
@@ -40,9 +43,11 @@ private:
 template <typename Real>
 class Poly6<Real, two_dimensional> {
 public:
+  DEVICE_CALLABLE
   Poly6(const Real smoothing_radius): h_{smoothing_radius},
                                       norm_{static_cast<Real>(4.0/(M_PI*pow(h_, 8.0)))} {};
 
+  DEVICE_CALLABLE
   Real operator()(const Real r_mag) const {
     if(r_mag > h_)
      return 0.0;
@@ -61,9 +66,11 @@ private:
 template <typename Real>
 class Del_Poly6<Real, three_dimensional> {
 public:
+  DEVICE_CALLABLE
   Del_Poly6(const Real smoothing_radius): h_{smoothing_radius},
                                           norm_{static_cast<Real>(-945.0/(32.0*M_PI*pow(h_, 9.0)))} {};
 
+  DEVICE_CALLABLE
   Vec<Real,three_dimensional> operator()(const Vec<Real,three_dimensional>& vec_p,
                                          const Vec<Real,three_dimensional>& vec_q) const {
     const Vec<Real,three_dimensional> r = vec_p - vec_q;
@@ -87,9 +94,11 @@ private:
 template <typename Real>
 class Del_Poly6<Real, two_dimensional> {
 public:
+  DEVICE_CALLABLE
   Del_Poly6(const Real smoothing_radius): h_{smoothing_radius},
                                           norm_{static_cast<Real>(-24.0/(M_PI*pow(h_, 8.0)))} {};
 
+  DEVICE_CALLABLE
   Vec<Real,two_dimensional> operator()(const Vec<Real,two_dimensional>& vec_p,
                                          const Vec<Real,two_dimensional>& vec_q) const {
     const Vec<Real,two_dimensional> r = vec_p - vec_q;
@@ -113,10 +122,12 @@ private:
 template <typename Real>
 class Del_Spikey<Real, three_dimensional> {
 public:
+  DEVICE_CALLABLE
   Del_Spikey(const Real smoothing_radius): h_{smoothing_radius},
                                            norm_{static_cast<Real>(-45.0/(M_PI*pow(h_, 6.0)))},
                                            r_epsilon_(std::numeric_limits<Real>::epsilon()) {};
 
+  DEVICE_CALLABLE
   Vec<Real,three_dimensional> operator()(const Vec<Real,three_dimensional>& vec_p,
                                          const Vec<Real,three_dimensional>& vec_q) const {
     const Vec<Real,three_dimensional> r = vec_p - vec_q;
@@ -139,10 +150,12 @@ private:
 template <typename Real>
 class Del_Spikey<Real, two_dimensional> {
 public:
+  DEVICE_CALLABLE
   Del_Spikey(const Real smoothing_radius): h_{smoothing_radius},
                                            norm_{static_cast<Real>(-30.0/(M_PI*pow(h_, 5.0)))},
                                            r_min_(std::numeric_limits<Real>::epsilon()) {};
 
+  DEVICE_CALLABLE
   Vec<Real,two_dimensional> operator()(const Vec<Real,two_dimensional>& vec_p,
                                        const Vec<Real,two_dimensional>& vec_q) const {
     const Vec<Real,two_dimensional> r = vec_p - vec_q;
@@ -169,9 +182,11 @@ private:
 template <typename Real>
 class C_Spline<Real, three_dimensional> {
 public:
+  DEVICE_CALLABLE
   C_Spline(const Real smoothing_radius): h_{smoothing_radius},
                                       norm_{static_cast<Real>(32.0/(M_PI*pow(h_, 9.0)))} {};
 
+  DEVICE_CALLABLE
   Real operator()(const Real r) const {
     if(r > h_)
       return 0.0;
@@ -193,9 +208,11 @@ private:
 template <typename Real>
 class C_Spline<Real, two_dimensional> {
 public:
+  DEVICE_CALLABLE
   C_Spline(const Real smoothing_radius): h_{smoothing_radius},
                                          norm_{static_cast<Real>(32.0/(M_PI*pow(h_, 8.0)))} {};
 
+  DEVICE_CALLABLE
   Real operator()(const Real r) const {
     if(r > h_)
       return 0.0;
