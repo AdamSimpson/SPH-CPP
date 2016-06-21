@@ -1,6 +1,8 @@
 #include "user_input.h"
 #include "SDL2/SDL.h"
 
+namespace sim {
+
 // To persist state between key up/down events
 void UserInput::update() {
   // Reset mouse deltas before accumulating events
@@ -44,4 +46,5 @@ float UserInput::mouse_delta_x() const {
 
 float UserInput::mouse_delta_y() const {
   return mouse_dy_;
+}
 }

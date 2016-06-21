@@ -10,6 +10,8 @@
 #include <map>
 #include <iostream>
 
+namespace sim {
+
 TextRenderer::TextRenderer(glm::vec2 screen_dims,
                            int text_size=24): screen_dims_{screen_dims},
                                                     text_size_{text_size}
@@ -183,4 +185,5 @@ void TextRenderer::create_character_map() {
   // Cleanup freetype
   FT_Done_Face(ft_face_);
   FT_Done_FreeType(ft_);
+}
 }

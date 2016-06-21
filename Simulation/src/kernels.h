@@ -6,6 +6,7 @@
 #include <math.h>
 #include <limits>
 
+namespace sim {
 /**
    Empty generic template class
  **/
@@ -226,3 +227,4 @@ private:
   Real h_;
   Real norm_;
 };
+}

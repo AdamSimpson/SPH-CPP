@@ -5,6 +5,8 @@
 #include "camera.h"
 #include <iostream>
 
+namespace sim {
+
 Particles::Particles() {
   this->create_buffers();
   this->create_program();
@@ -132,4 +134,5 @@ void Particles::create_program() {
 
 void Particles::destroy_program() {
   glDeleteProgram(program_);
+}
 }

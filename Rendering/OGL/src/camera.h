@@ -5,6 +5,7 @@
 #include "GL/glew.h"
 #include "glm/glm.hpp"
 
+namespace sim {
 class Camera {
 public:
   static constexpr int binding_index = 0;
@@ -34,3 +35,4 @@ private:
   void move_right(float frame_time);
   void handle_mouse(int x_rel, int y_rel);
 };
+}

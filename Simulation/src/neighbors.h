@@ -7,12 +7,9 @@
 #include "vec.h"
 #include "parameters.h"
 #include "device.h"
-#include "thrust/iterator/counting_iterator.h"
-#include "thrust/iterator/zip_iterator.h"
-#include "thrust/sort.h"
-#include "thrust/binary_search.h"
-#include "thrust/execution_policy.h"
-#include "sim_algorithms.h"
+#include "sim_algorithms_on_the_fly.h"
+
+namespace sim {
 
 #define MAX_NEIGHBORS 60
 
@@ -36,7 +33,7 @@ template<typename Real, Dimension Dim>
 class Neighbors: public ManagedAllocation {
 public:
   Neighbors(const Parameters<Real,Dim>& parameters): parameters_{parameters},
-                                                     bin_spacing_{(Real)1.2*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
+                                                     bin_spacing_{(Real)1.0*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
                                                      bin_dimensions_{static_cast<Vec<std::size_t,Dim>>(ceil(
                                                                                                             (parameters.boundary().extent())
                                                                                                             /bin_spacing_) + static_cast<Real>(2))},
@@ -85,7 +82,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
      Calclate bin value for each particle
   **/
   void calculate_bins(const IndexSpan& span, const Vec<Real,Dim>* position_stars) {
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t i) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t i) {
       bin_ids_[i] = this->calculate_bin_id(position_stars[i]);
       particle_ids_[i] = i;
       });
@@ -95,28 +92,22 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
      Sort particle_ids array into bin order
    **/
   void sort_bins(std::size_t particle_count) {
-    thrust::sort_by_key(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count , particle_ids_.data());
-    cudaDeviceSynchronize();
+    sim::algorithms::sort_by_key(bin_ids_.data(), bin_ids_.data() + particle_count , particle_ids_.data());
   }
 
   /**
      Find begin/end bounds of bins
    **/
   void find_bin_bounds(std::size_t particle_count) {
-    auto counting_begin = thrust::make_counting_iterator((std::size_t)0);
-    auto counting_end = thrust::make_counting_iterator(product(bin_dimensions_));
+    IndexSpan search_span{0, product(bin_dimensions_)};
 
-    thrust::lower_bound(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count,
-                        counting_begin, counting_end,
-                        begin_indices_.data());
+    sim::algorithms::lower_bound(bin_ids_.data(), bin_ids_.data() + particle_count,
+                     search_span,
+                     begin_indices_.data());
 
-    cudaDeviceSynchronize();
-
-    thrust::upper_bound(thrust::device, bin_ids_.data(), bin_ids_.data() + particle_count,
-                        counting_begin, counting_end,
-                        end_indices_.data());
-
-    cudaDeviceSynchronize();
+    sim::algorithms::upper_bound(bin_ids_.data(), bin_ids_.data() + particle_count,
+                     search_span,
+                     end_indices_.data());
   }
 
   /**
@@ -167,9 +158,10 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     //    auto index = calculate_bin_id(Vec<Real,3>{55.0,55.0,55.0});
     //    std::cout<<"index "<<index<<"bins: "<<neighbor_bins_[index].count<<std::endl;
 
-    const Real smoothing_radius_squared = parameters_.smoothing_radius() *  parameters_.smoothing_radius();
+    // Allow particles in neighbor list slightly outside of radius to allow movement during substeps
+    const Real valid_radius_squared = bin_spacing_ * bin_spacing_;
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t particle_index) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t particle_index) {
         const auto position_star = position_stars[particle_index];
         auto& bin = neighbor_bins_[particle_index];
         // @todo NVCC doesn't like this constexpr
@@ -191,15 +183,13 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
 
             const auto neighbor_position_star = position_stars[neighbor_particle_index];
             const Real distance_squared = magnitude_squared(position_star - neighbor_position_star);
-            if(distance_squared < smoothing_radius_squared && bin.count < MAX_NEIGHBORS) {
+            if(distance_squared < valid_radius_squared && bin.count < MAX_NEIGHBORS) {
               bin.neighbor_indices[bin.count] = neighbor_particle_index;
               ++bin.count;
             }
           }
         }
     });
-
-    cudaDeviceSynchronize();
   }
 
   /**
@@ -237,3 +227,4 @@ private:
   sim::Array<std::size_t> bin_ids_;   // Array of bin ids
   sim::Array<std::size_t> particle_ids_;  // Array of particle ids
 };
+}

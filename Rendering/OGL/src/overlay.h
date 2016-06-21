@@ -9,6 +9,8 @@
 #include "glm/glm.hpp"
 #include <functional>
 
+namespace sim {
+
 template <typename Real, Dimension Dim>
 class Overlay: public Drawable {
 public:
@@ -156,3 +158,4 @@ private:
   }
 
 };
+}

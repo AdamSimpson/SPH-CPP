@@ -33,6 +33,16 @@ if(${OPENMP})
   set_target_properties(sph PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
+# Setup for CUDA and OPENMP
+if(${CUDA_AND_OPENMP})
+  Message("Enabling CUDA")
+  find_package(CUDA REQUIRED)
+  find_package(OpenMP REQUIRED)
+  set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-DCUDA -ccbin /usr/bin/g++-5 --expt-extended-lambda --expt-relaxed-constexpr --std=c++11 -Xcompiler ${OpenMP_CXX_FLAGS})
+  cuda_add_executable(sph ${SRC_FILES})
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})

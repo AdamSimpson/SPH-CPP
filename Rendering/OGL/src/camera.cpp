@@ -8,6 +8,8 @@
 #include "glm/gtx/rotate_vector.hpp"
 #include "glm/gtx/norm.hpp"
 
+namespace sim {
+
 Camera::Camera() {
   yaw_ = 0.0f;
   pitch_ = 0.0f;
@@ -132,4 +134,5 @@ void Camera::process_input(const UserInput& user_input) {
     this->handle_mouse(-speed_, 0.0f);
   if(user_input.key_is_pressed("right"))
     this->handle_mouse(speed_, 0.0f);
+}
 }

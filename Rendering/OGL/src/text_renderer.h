@@ -7,6 +7,8 @@
 #include "drawable.h"
 #include <map>
 
+namespace sim {
+
 // Structure to hold cache glyph information
 struct Character {
     GLuint tex;
@@ -46,3 +48,4 @@ private:
   GLint view_matrices_index_;
   GLint light_index_;
 };
+}

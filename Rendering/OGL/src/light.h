@@ -3,6 +3,8 @@
 #include "GL/glew.h"
 #include "glm/glm.hpp"
 
+namespace sim {
+
 class Light {
 public:
   static constexpr int binding_index = 1;
@@ -19,3 +21,4 @@ private:
   glm::vec4 intensity_ambient_;
   float attenuation_;
 };
+}

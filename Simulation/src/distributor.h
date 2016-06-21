@@ -11,10 +11,10 @@
 #include "parameters.h"
 #include "thrust/execution_policy.h"
 #include <thrust/iterator/zip_iterator.h>
-#include <thrust/partition.h>
 #include "parameters.h"
 #include "mpi++.h"
 #include "device.h"
+#include "sim_algorithms_on_the_fly.h"
 
 /***
   The distributor is responsible for all domain-to-domain communication as
@@ -35,6 +35,7 @@
   is not appropriate as a particle is not defined by a single pointer but by a SoA
 ***/
 
+namespace sim {
 template<typename Real, Dimension Dim>
 class Distributor {
 public:
@@ -484,19 +485,17 @@ public:
     const auto domain_end = domain_.end;
 
     // Move oob-left/right particles to end of arrays
-    auto oob_begin = thrust::partition(thrust::device, begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
+    auto oob_begin = sim::algorithms::partition(begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star >= domain_begin && x_star <= domain_end); // True if not OOB
     });
     // Move oob-right to end of array, arrays now {staying,oob-left,oob-right}
-    auto oob_right_begin = thrust::partition(thrust::device, oob_begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
+    auto oob_right_begin = sim::algorithms::partition(oob_begin, end, [=] DEVICE_CALLABLE (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star <= domain_begin); // True if oob-left
     });
-
-    cudaDeviceSynchronize();
 
     oob_left_count_  = oob_right_begin - oob_begin;
     oob_right_count_ = end - oob_right_begin;
@@ -588,19 +587,17 @@ public:
     const auto edge_right = domain_.end - edge_width_;
 
     // Move left/right edge particles to end of arrays
-    auto edge_begin = thrust::partition(thrust::device, begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
+    auto edge_begin = sim::algorithms::partition(begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star >= edge_left && x_star <= edge_right ); // True if not edge
     });
     // Move right edge to end of array, arrays now {interior, edge-left, edge-right}
-    auto edge_right_begin = thrust::partition(thrust::device, edge_begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
+    auto edge_right_begin = sim::algorithms::partition(edge_begin, end, [=] DEVICE_CALLABLE  (const Tuple& tuple) {
       const auto position_star = thrust::get<0>(tuple);
       const auto x_star = position_star.x;
       return (x_star <= edge_left); // True if edge-left
     });
-
-    cudaDeviceSynchronize();
 
     edge_left_count_ = edge_right_begin - edge_begin;
     edge_right_count_ = end - edge_right_begin;
@@ -686,3 +683,4 @@ public:
   }
 
 };
+}

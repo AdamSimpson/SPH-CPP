@@ -9,6 +9,8 @@
 #include "glm/gtx/rotate_vector.hpp"
 #include "glm/gtx/norm.hpp"
 
+namespace sim {
+
 Light::Light() {
   world_position_ = {0.0f, 0.0f, 0.0f, 1.0};
   intensity_ = {0.8, 0.8, 0.8, 1.0};
@@ -59,4 +61,5 @@ void Light::update(const glm::mat4& view_matrix) {
 
   // Unbind
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
+}
 }

@@ -18,6 +18,7 @@
 #include "particles.h"
 #include "parameters.h"
 
+namespace sim {
 template<typename Real, Dimension Dim>
 class Visualizer {
 public:
@@ -145,6 +146,12 @@ public:
 
     if(user_input.key_was_pressed("p"))
       parameters_.toggle_computation_active();
+
+    if(user_input.key_was_pressed("g"))
+      parameters_.enable_gpu_execution_mode();
+
+    if(user_input.key_was_pressed("c"))
+      parameters_.enable_cpu_execution_mode();
   }
 
 private:
@@ -156,3 +163,4 @@ private:
   Parameters<Real,Dim>& parameters_;
   std::vector<const Drawable*> drawables_;
 };
+}

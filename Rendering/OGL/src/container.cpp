@@ -4,6 +4,7 @@
 #include "light.h"
 #include "camera.h"
 
+namespace sim {
 Container::Container(const AABB<float, three_dimensional>& container_bounds) {
   this->create_buffers();
   this->create_program();
@@ -162,4 +163,5 @@ void Container::set_vertices(const AABB<float, three_dimensional>& bounds) {
   // Fill buffer
   glBufferData(GL_ARRAY_BUFFER, 8*30*sizeof(GLfloat), vertices,
                GL_STATIC_DRAW);
+}
 }

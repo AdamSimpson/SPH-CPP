@@ -3,6 +3,8 @@
 #include <unordered_set>
 #include "SDL2/SDL.h"
 
+namespace sim {
+
 class UserInput {
 public:
   // update input events since last call to update
@@ -28,3 +30,4 @@ private:
   float mouse_dx_;
   float mouse_dy_;
 };
+}

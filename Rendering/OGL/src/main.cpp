@@ -17,7 +17,7 @@ using Real = float;
 static const Dimension Dim = three_dimensional;
 
 double update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &clock_start,
-                  Overlay<Real,Dim>& overlay) {
+                  sim::Overlay<Real,Dim>& overlay) {
   double fps;
   auto clock_end{std::chrono::high_resolution_clock::now()};
   fps = 1.0 / std::chrono::duration<double>(clock_end - clock_start).count();
@@ -28,17 +28,20 @@ double update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &c
 
 int main(int argc, char *argv[]) {
   try {
-    Distributor<Real, Dim> distributor;
-    Parameters<Real, Dim> parameters{"../../../Common/params.ini"};
-    Emitter<Real, Dim> emitter{parameters};
-    UserInput user_input;
+    sim::Distributor<Real, Dim> distributor;
+    sim::Parameters<Real, Dim> parameters{"../../../Common/params.ini"};
+    sim::Emitter<Real, Dim> emitter{parameters};
+    sim::UserInput user_input;
 
     // @todo remove parameters from visualizer and just pass in world boundary
-    Visualizer<Real, Dim> visualizer{parameters};
-    Particles particles;
-    Container container{static_cast<AABB<Real, Dim>>(parameters.boundary_) };
-    Overlay<Real, Dim> overlay{parameters, visualizer.screen_pixel_dimensions()};
-    Mover<Real, Dim> mover{parameters};
+    sim::Visualizer<Real, Dim> visualizer{parameters};
+    sim::Particles particles;
+    // @todo get rid of this hack
+    AABB<float, Dim> container_boundary{parameters.boundary_.min, parameters.boundary_.max};
+//    Container container{static_cast<AABB<float, Dim>>(parameters.boundary_) };
+    sim::Container container{container_boundary};
+    sim::Overlay<Real, Dim> overlay{parameters, visualizer.screen_pixel_dimensions()};
+    sim::Mover<Real, Dim> mover{parameters};
 
     visualizer.add_drawable(particles);
     visualizer.add_drawable(container);

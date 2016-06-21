@@ -1,6 +1,7 @@
 #pragma once
 
 #include "managed_allocation.h"
+#include "execution_mode.h"
 #include "dimension.h"
 #include "vec.h"
 #include "aabb.h"
@@ -13,6 +14,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/algorithm/string/trim.hpp>
 
+namespace sim {
 // Forward declaration
 template<typename Real, Dimension Dim>
 Vec<Real,Dim> to_real_vec(const std::string& input_string);
@@ -24,7 +26,6 @@ template<typename Real, Dimension Dim>
 class Parameters: public ManagedAllocation {
 public:
 
-  // @todo make this private - should use public functions to query state of Mode
   enum Mode {
     EDIT_VIEW      = (1 << 0),
     EMITTER_ACTIVE = (1 << 1),
@@ -37,7 +38,8 @@ public:
   /**
     @brief  Construct initial parameters from file_name .INI file
   **/
-  Parameters(const std::string& file_name): simulation_mode_{Mode::EDIT_VIEW} {
+  Parameters(const std::string& file_name): simulation_mode_{Mode::EDIT_VIEW},
+                                            execution_mode_{ExecutionMode::GPU} {
     this->read_INI(file_name);
     this->derive_from_input();
   };
@@ -73,6 +75,8 @@ public:
 
     initial_fluid_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.min"));
     initial_fluid_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.max"));
+
+    mover_center_ = to_real_vec<Real,Dim>(property_tree.get<std::string>("Mover.center"));
   }
 
   /**
@@ -96,7 +100,7 @@ public:
     std::cout<<"emitter_center: "<<emitter_center_<<std::endl;
 
     std::cout<<"Max speed must be reset if smoothing radius changes\n";
-    max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_; // CFL
+    max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_;
 
     // @todo params print function to print them all
     std::cout<<"rest_spacing: "<<particle_rest_spacing_<<std::endl;
@@ -105,6 +109,7 @@ public:
     std::cout<<"rest mass: "<<rest_mass_<<std::endl;
     std::cout<<"density: "<<rest_density_<<std::endl;
     std::cout<<"max speed: "<<max_speed_<<std::endl;
+    std::cout<<"time step: "<<time_step_<<std::endl;
   }
 
   /**
@@ -300,8 +305,23 @@ public:
   }
 
   DEVICE_CALLABLE
+  ExecutionMode execution_mode() const {
+    return execution_mode_;
+  }
+
+  DEVICE_CALLABLE
   void toggle_computation_active() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::PAUSE_COMPUTE);
+  }
+
+  DEVICE_CALLABLE
+  void enable_gpu_execution_mode() {
+    execution_mode_ = ExecutionMode::GPU;
+  }
+
+  DEVICE_CALLABLE
+  void enable_cpu_execution_mode() {
+    execution_mode_ = ExecutionMode::CPU;
   }
 
   DEVICE_CALLABLE
@@ -401,6 +421,7 @@ public:
   AABB<Real,Dim> boundary_;
   AABB<Real,Dim> initial_fluid_;
   Mode simulation_mode_;
+  ExecutionMode execution_mode_;
   Vec<Real,Dim> emitter_center_;
   Vec<Real,Dim> emitter_velocity_;
   Vec<Real,Dim> mover_center_;
@@ -422,4 +443,5 @@ Vec<Real,Dim> to_real_vec(const std::string& input_string) {
   }
 
   return result;
+}
 }

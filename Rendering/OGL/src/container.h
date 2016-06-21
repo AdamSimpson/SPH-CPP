@@ -5,6 +5,8 @@
 #include "GL/glew.h"
 #include "glm/glm.hpp"
 
+namespace sim {
+
 class Container: public Drawable {
 public:
   Container(const AABB<float, three_dimensional>& container_bounds);
@@ -33,3 +35,4 @@ private:
   void destroy_program();
   void set_vertices(const AABB<float, three_dimensional>& bounds);
 };
+}

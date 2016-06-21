@@ -8,6 +8,8 @@
 #include "ogl_utils.h"
 #include <vector>
 
+namespace sim {
+
 class Particles : public Drawable {
 public:
   Particles();
@@ -122,3 +124,4 @@ private:
   void destroy_buffers();
   void destroy_program();
 };
+}

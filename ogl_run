@@ -1,1 +1,1 @@
-OMP_NUM_THREADS=1 mpirun -n 1 -wdir ~/Dropbox/SPH-CPP/Rendering/OGL/build ./sph-renderer : -n 1 -wdir ~/Dropbox/SPH-CPP/Simulation/build nvprof ./sph
+OMP_NUM_THREADS=1 mpirun -n 1 -wdir ~/Dropbox/SPH-CPP/Rendering/OGL/build ./sph-renderer : -n 1 -wdir ~/Dropbox/SPH-CPP/Simulation/build ./sph

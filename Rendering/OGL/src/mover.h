@@ -9,6 +9,8 @@
 #include "GL/glew.h"
 #include "ogl_utils.h"
 
+namespace sim {
+
 /**
   Class to manage modifying mover values
 **/
@@ -235,3 +237,4 @@ class Mover: public Drawable {
     }
 
 };
+}

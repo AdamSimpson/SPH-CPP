@@ -8,6 +8,7 @@
 #include <vector>
 #include "mpi++.h"
 
+namespace sim {
 template<typename Real, Dimension Dim>
 class Distributor {
 public:
@@ -74,3 +75,4 @@ private:
   MPI_Datatype MPI_VEC_;
   MPI_Datatype MPI_PARAMETERS_;
 };
+}

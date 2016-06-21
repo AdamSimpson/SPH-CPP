@@ -9,6 +9,7 @@
 #include "vec.h"
 #include "parameters.h"
 #include "aabb.h"
+#include "execution_mode.h"
 
 extern "C" {
   #define OMPI_SKIP_MPICXX // Disable C++ bindings
@@ -64,7 +65,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[Dim];
     int block_lengths[Dim];
 
-    assert(std::is_trivial_layout<Vec_type>::value);
+    assert(std::is_pod<Vec_type>::value);
 
     for(int i=0; i<Dim; ++i) {
       types[i] = get_mpi_type<Real>();
@@ -87,7 +88,7 @@ namespace sim { namespace mpi {
     MPI_Aint disps[2];
     int block_lengths[2];
 
-    assert(std::is_trivial_layout<AABB_type>::value);
+    assert(std::is_pod<AABB_type>::value);
 
     types[0] = MPI_VEC;
     types[1] = MPI_VEC;
@@ -108,12 +109,12 @@ namespace sim { namespace mpi {
                               const MPI_Datatype MPI_AABB,
                               MPI_Datatype& MPI_PARAMETERS) {
     typedef Parameters<Real,Dim> Parameters_type;
-    const int member_count = 22;
+    const int member_count = 23;
     MPI_Datatype types[member_count];
     MPI_Aint disps[member_count];
     int block_lengths[member_count];
 
-    assert(std::is_trivial_layout<Parameters_type>::value);
+    assert(std::is_pod<Parameters_type>::value);
 
     MPI_Datatype MPI_SIZE_T = get_mpi_size_t();
 
@@ -193,17 +194,21 @@ namespace sim { namespace mpi {
     block_lengths[18] = 1;
     disps[18] = offsetof(Parameters_type, simulation_mode_);
 
-    types[19] = MPI_VEC;
+    types[19] = MPI_INT;
     block_lengths[19] = 1;
-    disps[19] = offsetof(Parameters_type, emitter_center_);
+    disps[19] = offsetof(Parameters_type, execution_mode_);
 
     types[20] = MPI_VEC;
     block_lengths[20] = 1;
-    disps[20] = offsetof(Parameters_type, emitter_velocity_);
+    disps[20] = offsetof(Parameters_type, emitter_center_);
 
     types[21] = MPI_VEC;
     block_lengths[21] = 1;
-    disps[21] = offsetof(Parameters_type, mover_center_);
+    disps[21] = offsetof(Parameters_type, emitter_velocity_);
+
+    types[22] = MPI_VEC;
+    block_lengths[22] = 1;
+    disps[22] = offsetof(Parameters_type, mover_center_);
 
     int err;
     err = MPI_Type_create_struct(member_count, block_lengths, disps, types, &MPI_PARAMETERS);

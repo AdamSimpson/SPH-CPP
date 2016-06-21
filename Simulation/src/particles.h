@@ -8,13 +8,13 @@
 #include "neighbors.h"
 #include "kernels.h"
 #include "device.h"
-#include "sim_algorithms.h"
+#include "sim_algorithms_on_the_fly.h"
 #include <limits>
 
 /**
   Class to handle 2D and 3D SPH particle physics
 **/
-
+namespace sim {
 template<typename Real, Dimension Dim>
 class Particles: public ManagedAllocation {
 public:
@@ -191,7 +191,7 @@ public:
     const Real g = parameters_.gravity();
     const Real dt = parameters_.time_step();
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       velocities_[p].y += g*dt;
     });
   }
@@ -202,9 +202,10 @@ public:
   void predict_positions(IndexSpan span) {
     const Real dt = parameters_.time_step();
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       auto position_p = positions_[p];
-      auto position_star_p = position_p + (velocities_[p] * dt);
+      auto velocity = velocities_[p];
+      auto position_star_p = position_p + (velocity * dt);
 //      auto position_star_p = static_cast<Real>(4.0/3.0) * position_p - static_cast<Real>(1.0/3.0) * positions_previous_[p]
 //                             + static_cast<Real>(8.0/9.0) * dt * velocities_[p] - static_cast<Real>(2.0/9.0) * dt * velocities_previous_[p]
 //                             + Vec<Real,Dim>(0.0, -static_cast<Real>(4.0/9.0)*dt*dt * static_cast<Real>(9.8), 0.0);
@@ -212,11 +213,6 @@ public:
       apply_boundary_conditions(position_star_p,
                                 parameters_);
       position_stars_[p] = position_star_p;
-
-      // @todo only update position_p if position_star_p is updated
-      apply_boundary_conditions(position_p,
-                                parameters_);
-      positions_[p] = position_p;
     });
   }
 
@@ -225,29 +221,28 @@ public:
     const Real W_0 = W(static_cast<Real>(0.0));
 
     const Real mass = parameters_.rest_mass();
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         // Own contribution to density
         Real density = mass * W_0;
 
         for(const std::size_t q : neighbors_[p]) {
+
+          // @todo get rid of this hack!
+          if(magnitude(position_stars_[p] - position_stars_[q]) < 0.00000001)
+            position_stars_[p] -= velocities_[p] * parameters_.time_step() / (Real)50.0;
+
           const Real r_mag = magnitude(position_stars_[p] - position_stars_[q]);
+
           density += mass * W(r_mag);
         }
         densities_[p] = density;
     });
-/*
-    // This is node level only
-    Real min_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 10000000, thrust::minimum<Real>());
-    Real max_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::maximum<Real>());
-    Real avg_density = thrust::reduce(densities_.data(), densities_.data() + span.end, 0, thrust::plus<Real>()) / span.end;
-    std::cout<<"min, max avg Density: "<<min_density<<", "<<max_density<<","<<avg_density<<std::endl;
-*/
   }
 
   void compute_pressure_lambdas(IndexSpan span) {
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // pressure constraint
       const Real constraint = densities_[p]/parameters_.rest_density() - static_cast<Real>(1.0);
       // Clamp constraint to be positive
@@ -269,11 +264,11 @@ public:
       lambdas_[p] = -C_p/(sum_C + parameters_.lambda_epsilon());
       });
   }
-
+/*
   void compute_surface_lambdas(IndexSpan span) {
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // surface tension constraint
       Vec<Real,Dim> color{0.0};
       for(const std::size_t q : neighbors_[p]) {
@@ -289,7 +284,7 @@ public:
         const auto r = (position_stars_[p] - position_stars_[q]);
         const Real r_mag = magnitude(r);
 
-        if(r_mag < 0.0001)
+        if(r_mag < 0.0001*parameters_.smoothing_radius());
           continue;
 
         const auto r_norm = r/r_mag;
@@ -299,7 +294,7 @@ public:
       scratch_scalar_[p] = constraint_tension;
     });
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
       // Calculate gradient of constraint
       Real sum_C = 0.0;
       Vec<Real,Dim> sum_gradient{0.0};
@@ -321,7 +316,7 @@ public:
   void compute_surface_dps(IndexSpan span, const int substep){
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         const Real stiffness = 1.0 - pow(static_cast<Real>(1.0) - parameters_.k_stiff(),
                                          static_cast<Real>(1.0)/static_cast<Real>(substep));
 
@@ -334,11 +329,11 @@ public:
         scratch_[p] = stiffness * (float)-0.005 * dp;
       });
   };
-
+*/
   void compute_pressure_dps(IndexSpan span, const int substep){
     const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> dp{0.0};
         for(const std::size_t q : neighbors_[p]) {
           dp += (lambdas_[p] + lambdas_[q]) * Del_W(position_stars_[p], position_stars_[q]);
@@ -348,7 +343,7 @@ public:
   };
 
   void update_position_stars(IndexSpan span){
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         // scratch contains delta positions
         const auto position_star_p_old = position_stars_[p];
         auto position_star_p_new = position_stars_[p] + scratch_[p];
@@ -358,12 +353,12 @@ public:
   };
 
   void update_velocities(IndexSpan span){
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
           velocities_previous_[p] = velocities_[p];
 //          Vec<Real,Dim> velocity{(static_cast<Real>(1.5)*position_stars_[p] - static_cast<Real>(2.0)*positions_[p] + static_cast<Real>(0.5)*positions_previous_[p] ) / parameters_.time_step()};
         Vec<Real,Dim> velocity{(position_stars_[p] - positions_[p])/parameters_.time_step()};
         // Clamp to maximum velocity
-        clamp_in_place(velocity, static_cast<Real>(-1.0)*parameters_.max_speed(), parameters_.max_speed());
+//        clamp_in_place(velocity, static_cast<Real>(-1.0)*parameters_.max_speed(), parameters_.max_speed());
         // Clamp to 0 if velocity under threshold
         if(magnitude_squared(velocity) < 0.000001 * parameters_.max_speed())
             velocity = Vec<Real,Dim>{0.0};
@@ -373,18 +368,18 @@ public:
   }
 
   void update_positions(IndexSpan span){
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         positions_previous_[p]  = positions_[p];
         positions_[p] = position_stars_[p];
       });
   }
 
   void apply_surface_tension(IndexSpan color_field_span, IndexSpan surface_tension_span) {
-    const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
+    const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
     const C_Spline<Real,Dim> C{parameters_.smoothing_radius()};
 
     // Compute gradient of color field
-    sim::for_each_index(color_field_span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(color_field_span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> color{0.0};
         for(const std::size_t q : neighbors_[p]) {
           color += Del_W(position_stars_[p],  position_stars_[q]) / densities_[q];
@@ -392,15 +387,15 @@ public:
         scratch_[p] = parameters_.smoothing_radius() * color;
       });
 
-    sim::for_each_index(surface_tension_span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(surface_tension_span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> surface_tension_force{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
           const Vec<Real,Dim> r = position_stars_[p] - position_stars_[q];
 
           Real r_mag = magnitude(r);
-          if(r_mag < parameters_.smoothing_radius()*0.001)
-            r_mag = parameters_.smoothing_radius()*0.001;
+          if(r_mag < parameters_.smoothing_radius()*0.000001)
+            r_mag = parameters_.smoothing_radius()*0.000001;
 
           const Vec<Real,Dim> cohesion_force{-parameters_.gamma() * C(r_mag) * r/r_mag};
           const Vec<Real,Dim> curvature_force{-parameters_.gamma() * (scratch_[p] - scratch_[q])};
@@ -409,13 +404,14 @@ public:
         }
 
         velocities_[p] += surface_tension_force / densities_[p] * parameters_.time_step();
+//          position_stars_[p] += surface_tension_force / densities_[p] * parameters_.time_step()/3.0 * parameters_.time_step();
       });
   }
 
   void apply_viscosity(IndexSpan span) {
     const Poly6<Real,Dim> W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> dv{0.0};
         for(const std::size_t q : neighbors_[p]) {
           const Real r_mag = magnitude(position_stars_[p] - position_stars_[q]);
@@ -426,9 +422,9 @@ public:
   }
 
   void compute_vorticity(IndexSpan span) {
-    const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
+    const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
 
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> vorticity{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
@@ -442,9 +438,9 @@ public:
   }
 
   void apply_vorticity(IndexSpan span) {
-    const Del_Poly6<Real,Dim> Del_W{parameters_.smoothing_radius()};
+    const Del_Spikey<Real,Dim> Del_W{parameters_.smoothing_radius()};
     // Scratch contains vorticity
-    sim::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
+    sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         Vec<Real,Dim> eta{0.0};
 
         for(const std::size_t q : neighbors_[p]) {
@@ -494,4 +490,5 @@ void apply_boundary_conditions(Vec<Real,Dim>& position,
 
   // Clamp inside boundary
   clamp_in_place(position, boundary.min, boundary.max);
+}
 }

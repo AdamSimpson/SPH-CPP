@@ -4,6 +4,8 @@
 #include "dimension.h"
 #include "user_input.h"
 
+namespace sim {
+
 /**
   Class to manage modifying emitter values
 **/
@@ -98,3 +100,4 @@ class Emitter {
     Vec<Real,3> relative_front_;
     Vec<Real,3> relative_up_;
 };
+}
