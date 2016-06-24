@@ -35,7 +35,7 @@ public:
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
-    bool vsync_enabled = true;
+    bool vsync_enabled = false;
     std::cout<< "vsync enabled: " << vsync_enabled << std::endl;
     SDL_GL_SetSwapInterval(vsync_enabled); // Enable vsync
     window_ = SDL_CreateWindow("SPH", 0, 0, 0, 0, SDL_WINDOW_OPENGL | SDL_WINDOW_FULLSCREEN_DESKTOP);

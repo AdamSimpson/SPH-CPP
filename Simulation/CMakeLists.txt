@@ -43,6 +43,10 @@ if(${CUDA_AND_OPENMP})
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
+if(${CUDA_DEBUG})
+target_link_libraries(sph ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
+endif()
+
 #set(MPI_CXX_COMPILER mpic++)
 find_package(MPI REQUIRED)
 include_directories(${MPI_INCLUDE_PATH})

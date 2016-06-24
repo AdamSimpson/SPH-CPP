@@ -13,6 +13,10 @@
 #include "thrust/for_each.h"
 #include <thrust/partition.h>
 
+
+    #include <nvToolsExt.h>
+    #include <nvToolsExtCudaRt.h>
+
 // @todo is this reasonable?
 // This seems super janky with everything static
 // Having all the algorithms derived from an object also seems janky
@@ -168,7 +172,11 @@ namespace sim {
         return partition_OMP(begin, end, predicate);
     }
 
+    // Include debug macros
+    #include "sim_algorithms_on_the_fly_debug.h"
+
   };
 
   ExecutionMode algorithms::execution_mode_ = ExecutionMode::CPU;
+
 } // end namespace sim

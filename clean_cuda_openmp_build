@@ -4,6 +4,6 @@ cmake -DCMAKE_BUILD_TYPE=Release ..
 make
 cd ../../../Simulation
 rm -rf build && mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release -DCUDA_AND_OPENMP=1 ..
+cmake -DCMAKE_BUILD_TYPE=Release -DCUDA_DEBUG=1 -DCUDA_AND_OPENMP=1 ..
 make VERBOSE=1
 cd ../..

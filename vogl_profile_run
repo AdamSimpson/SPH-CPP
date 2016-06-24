@@ -1,1 +1,1 @@
-OMP_NUM_THREADS=1 mpirun --bind-to none -n 1 -wdir ~/Dropbox/SPH-CPP/Rendering/OGL/build vglrun -sp -fps 60 ./sph-renderer : -n 1 -wdir ~/Dropbox/SPH-CPP/Simulation/build /usr/local/cuda/bin/nvprof --export-profile sph.nvprof --system-profiling on ./sph
+OMP_NUM_THREADS=1 mpirun --bind-to none -n 1 -wdir ~/Dropbox/SPH-CPP/Rendering/OGL/build vglrun -sp -fps 60 ./sph-renderer : -n 1 -wdir ~/Dropbox/SPH-CPP/Simulation/build /usr/local/cuda/bin/nvprof --export-profile sph.nvvp --system-profiling on --cpu-profiling on ./sph

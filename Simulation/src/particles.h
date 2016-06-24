@@ -8,7 +8,6 @@
 #include "neighbors.h"
 #include "kernels.h"
 #include "device.h"
-#include "sim_algorithms_on_the_fly.h"
 #include <limits>
 
 /**
