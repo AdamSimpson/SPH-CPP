@@ -4,7 +4,6 @@
 #include "dimension.h"
 #include "vec.h"
 
-
 /////////////////////////////////////////////////
 // A basic 2D and 3D Axis aligned boundary box
 /////////////////////////////////////////////////
@@ -150,7 +149,6 @@ public:
   /**
    @brief Cast operator: static_cast() components of aabb
   **/
-/*
   template<typename T_out>
   operator AABB<T_out, three_dimensional>() {
 
@@ -159,12 +157,11 @@ public:
 
     return AABB<T_out, three_dimensional>{min, max};
   }
-  */
 };
 
 /**
    @brief return a vec containing the number of bins
-   that the aabb can be divided into given a given spacing
+   that the aabb can be divided into given a bin size
 **/
 template <typename Real, Dimension Dim>
 DEVICE_CALLABLE

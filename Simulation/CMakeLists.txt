@@ -44,7 +44,7 @@ if(${CUDA_AND_OPENMP})
 endif()
 
 if(${CUDA_DEBUG})
-target_link_libraries(sph ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
+  target_link_libraries(sph ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
 endif()
 
 #set(MPI_CXX_COMPILER mpic++)
@@ -66,4 +66,18 @@ find_package(ADIOS)
 include_directories(${ADIOS_INCLUDE_DIRS})
 target_link_libraries(sph ${ADIOS_LIBRARIES})
 
+# Includes Catch in the project:
+add_subdirectory(External/catch)
+add_library(Catch INTERFACE)
+target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
+
+# Create tests
+file(GLOB TEST_SRC_FILES Tests/*.cpp)
+add_executable(sph_tests ${TEST_SRC_FILES})
+target_link_libraries(sph_tests Catch)
+add_dependencies(sph_tests catch)
+add_test(NAME SphTests COMMAND sph_tests)
+
+# Install binaries
 install(TARGETS sph DESTINATION bin)
+install(TARGETS sph_tests DESTINATION bin)

@@ -122,7 +122,7 @@ class Mover: public Drawable {
       Vec<Real,Dim> new_front{std::cos(pitch_) * std::sin(yaw_),
                               std::sin(pitch_),
                               -std::cos(pitch_) * std::cos(yaw_)};
-      relative_front_ = normalize(new_front);
+      relative_front_ = normal(new_front);
     }
 
     void move_forward(float frame_time = 0.016f) {
@@ -134,13 +134,13 @@ class Mover: public Drawable {
     }
 
     void move_left(float frame_time = 0.016f) {
-      parameters_.mover_center_ += edit_speed_ * frame_time * normalize(
+      parameters_.mover_center_ += edit_speed_ * frame_time * normal(
                                                  cross(relative_front_,
                                                        (Real)-1.0 * relative_up_));
     }
 
     void move_right(float frame_time = 0.016f) {
-      parameters_.mover_center_ += edit_speed_ * frame_time * normalize(
+      parameters_.mover_center_ += edit_speed_ * frame_time * normal(
                                                  cross(relative_front_,
                                                        relative_up_));
     }

@@ -236,7 +236,7 @@ public:
 
   DEVICE_CALLABLE
   void decrease_rest_density() {
-    rest_density_ -=50.0;
+    rest_density_ -= 50.0;
   }
 
   DEVICE_CALLABLE
@@ -399,9 +399,6 @@ public:
     return simulation_mode_ & Mode::EDIT_MOVER;
   }
 
-//private:
-  // Not private so we boost mpi helpers work
-  // @todo is this monster parameters struct reasonable?
   std::size_t max_particles_local_;
   std::size_t initial_global_particle_count_;
   std::size_t solve_step_count_;
@@ -444,4 +441,5 @@ Vec<Real,Dim> to_real_vec(const std::string& input_string) {
 
   return result;
 }
+
 }

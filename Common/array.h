@@ -69,25 +69,44 @@ public:
   }
 
   void push_back(const T& value) {
-    data_[size_++] = value;
+    if(size_ + 1 > capacity_)
+      throw std::runtime_error("Not enough capacity to push_back");
+    else
+      data_[size_++] = value;
   }
 
   void push_back(const T& value, const size_t push_count) {
-    for(std::size_t i=0; i<push_count; i++)
-      this->push_back(value);
+    if(size_ + 1 > capacity_)
+      throw std::runtime_error("Not enough capacity to push_back");
+    else {
+      for(std::size_t i=0; i<push_count; i++) {
+        this->push_back(value);
+      }
+    }
   }
 
   void push_back(const T* values_ptr, const size_t push_count) {
-    for(std::size_t i=0; i<push_count; i++)
-      this->push_back(values_ptr[i]);
+    if(size_ + 1 > capacity_)
+      throw std::runtime_error("Not enough capacity to push_back");
+    else {
+      for(std::size_t i=0; i<push_count; i++) {
+        this->push_back(values_ptr[i]);
+      }
+    }
   }
 
   void pop_back() {
-    size_--;
+    if(size_ == 0)
+      throw std::runtime_error("Array popped_back with 0 size");
+    else
+      size_--;
   }
 
   void pop_back(std::size_t pop_count) {
-    size_ -= pop_count;
+    if(size_ == 0)
+      throw std::runtime_error("Array popped_back with 0 size");
+    else
+      size_ -= pop_count;
   }
 
   DEVICE_CALLABLE

@@ -433,7 +433,7 @@ Vec<T,n>& operator*=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
 }
 
 /**
-  @brief vec vec component wise multiplication assignment operator
+  @brief vec scalar component wise multiplication assignment operator
 **/
 template<typename T, int n>
 DEVICE_CALLABLE
@@ -509,12 +509,21 @@ T inverse_magnitude(const Vec<T,n>& vec) {
 }
 
 /**
+  @brief return vector normal
+**/
+template<typename T, int n>
+DEVICE_CALLABLE
+Vec<T,n> normal(const Vec<T,n>& vec) {
+  return inverse_magnitude(vec) * vec;
+}
+
+/**
   @brief normalize vector
 **/
 template<typename T, int n>
 DEVICE_CALLABLE
-Vec<T,n> normalize(const Vec<T,n>& vec) {
-  return inverse_magnitude(vec) * vec;
+void normalize(Vec<T,n>& vec) {
+  vec *= inverse_magnitude(vec);
 }
 
 /**
@@ -557,16 +566,16 @@ T sum(const Vec<T,n>& vec) {
 }
 
 /**
-  @brief component wise vector product
+  @brief return product of vector components
 **/
 template<typename T, int n>
 DEVICE_CALLABLE
 T product(const Vec<T,n>& vec) {
-  T sum = static_cast<T>(1);
+  T product = static_cast<T>(1);
   for(int i=0; i<n; ++i)
-    sum *= vec[i];
+    product *= vec[i];
 
-  return sum;
+  return product;
 }
 
 /**
