@@ -3,7 +3,7 @@
 
 SCENARIO("Arrays can be constructed", "[Array]") {
   GIVEN("an Array with capacity of 1,000,000 floats") {
-      sim::Array<float> a(1000000);
+    sim::Array<float> a(1000000);
     WHEN("the capacity is queried") {
       const auto c = a.capacity();
       THEN("it should return 1,000,000") {
