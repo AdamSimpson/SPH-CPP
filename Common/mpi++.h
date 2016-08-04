@@ -109,7 +109,7 @@ namespace sim { namespace mpi {
                               const MPI_Datatype MPI_AABB,
                               MPI_Datatype& MPI_PARAMETERS) {
     typedef Parameters<Real,Dim> Parameters_type;
-    const int member_count = 23;
+    const int member_count = 24;
     MPI_Datatype types[member_count];
     MPI_Aint disps[member_count];
     int block_lengths[member_count];
@@ -144,71 +144,75 @@ namespace sim { namespace mpi {
 
     types[6] = get_mpi_type<Real>();
     block_lengths[6] = 1;
-    disps[6] = offsetof(Parameters_type, rest_density_);
+    disps[6] = offsetof(Parameters_type, neighbor_bin_spacing_);
 
     types[7] = get_mpi_type<Real>();
     block_lengths[7] = 1;
-    disps[7] = offsetof(Parameters_type, rest_mass_);
+    disps[7] = offsetof(Parameters_type, rest_density_);
 
     types[8] = get_mpi_type<Real>();
     block_lengths[8] = 1;
-    disps[8] = offsetof(Parameters_type, gravity_);
+    disps[8] = offsetof(Parameters_type, rest_mass_);
 
     types[9] = get_mpi_type<Real>();
     block_lengths[9] = 1;
-    disps[9] = offsetof(Parameters_type, gamma_);
+    disps[9] = offsetof(Parameters_type, gravity_);
 
     types[10] = get_mpi_type<Real>();
     block_lengths[10] = 1;
-    disps[10] = offsetof(Parameters_type, lambda_epsilon_);
+    disps[10] = offsetof(Parameters_type, gamma_);
 
     types[11] = get_mpi_type<Real>();
     block_lengths[11] = 1;
-    disps[11] = offsetof(Parameters_type, k_stiff_);
+    disps[11] = offsetof(Parameters_type, lambda_epsilon_);
 
     types[12] = get_mpi_type<Real>();
     block_lengths[12] = 1;
-    disps[12] = offsetof(Parameters_type, visc_c_);
+    disps[12] = offsetof(Parameters_type, k_stiff_);
 
     types[13] = get_mpi_type<Real>();
     block_lengths[13] = 1;
-    disps[13] = offsetof(Parameters_type, time_step_);
+    disps[13] = offsetof(Parameters_type, visc_c_);
 
     types[14] = get_mpi_type<Real>();
     block_lengths[14] = 1;
-    disps[14] = offsetof(Parameters_type, max_speed_);
+    disps[14] = offsetof(Parameters_type, time_step_);
 
     types[15] = get_mpi_type<Real>();
     block_lengths[15] = 1;
-    disps[15] = offsetof(Parameters_type, vorticity_coef_);
+    disps[15] = offsetof(Parameters_type, max_speed_);
 
-    types[16] = MPI_AABB;
+    types[16] = get_mpi_type<Real>();
     block_lengths[16] = 1;
-    disps[16] = offsetof(Parameters_type, boundary_);
+    disps[16] = offsetof(Parameters_type, vorticity_coef_);
 
     types[17] = MPI_AABB;
     block_lengths[17] = 1;
-    disps[17] = offsetof(Parameters_type, initial_fluid_);
+    disps[17] = offsetof(Parameters_type, boundary_);
 
-    types[18] = MPI_INT;
+    types[18] = MPI_AABB;
     block_lengths[18] = 1;
-    disps[18] = offsetof(Parameters_type, simulation_mode_);
+    disps[18] = offsetof(Parameters_type, initial_fluid_);
 
     types[19] = MPI_INT;
     block_lengths[19] = 1;
-    disps[19] = offsetof(Parameters_type, execution_mode_);
+    disps[19] = offsetof(Parameters_type, simulation_mode_);
 
-    types[20] = MPI_VEC;
+    types[20] = MPI_INT;
     block_lengths[20] = 1;
-    disps[20] = offsetof(Parameters_type, emitter_center_);
+    disps[20] = offsetof(Parameters_type, execution_mode_);
 
     types[21] = MPI_VEC;
     block_lengths[21] = 1;
-    disps[21] = offsetof(Parameters_type, emitter_velocity_);
+    disps[21] = offsetof(Parameters_type, emitter_center_);
 
     types[22] = MPI_VEC;
     block_lengths[22] = 1;
-    disps[22] = offsetof(Parameters_type, mover_center_);
+    disps[22] = offsetof(Parameters_type, emitter_velocity_);
+
+    types[23] = MPI_VEC;
+    block_lengths[23] = 1;
+    disps[23] = offsetof(Parameters_type, mover_center_);
 
     int err;
     err = MPI_Type_create_struct(member_count, block_lengths, disps, types, &MPI_PARAMETERS);

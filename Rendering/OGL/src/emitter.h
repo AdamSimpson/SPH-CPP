@@ -32,11 +32,11 @@ class Emitter {
     void process_input(const UserInput& user_input) {
       if(user_input.key_was_pressed("e")) {
         parameters_.toggle_emitter_active();
-        parameters_.disable_emitter_edit();
+        parameters_.disable_edit_emitter();
       }
 
      if(user_input.key_was_pressed("tab"))
-       parameters_.toggle_emitter_edit();
+       parameters_.toggle_edit_emitter();
 
       if(parameters_.edit_emitter()) {
         const Real delta = parameters_.smoothing_radius() * 0.5;

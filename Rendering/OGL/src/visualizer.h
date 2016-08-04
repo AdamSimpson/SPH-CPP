@@ -136,16 +136,16 @@ public:
 
   void process_input(const UserInput& user_input) {
     if(user_input.key_was_pressed("tab") || user_input.key_was_pressed("m"))
-      parameters_.toggle_view_edit();
+      parameters_.toggle_edit_view();
 
-    if(parameters_.view_edit())
+    if(parameters_.edit_view())
       camera_.process_input(user_input);
 
     if(user_input.key_was_pressed("escape"))
       parameters_.exit_simulation();
 
     if(user_input.key_was_pressed("p"))
-      parameters_.toggle_computation_active();
+      parameters_.toggle_compute_paused();
 
     if(user_input.key_was_pressed("g"))
       parameters_.enable_gpu_execution_mode();
