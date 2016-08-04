@@ -58,25 +58,28 @@ public:
     boost::property_tree::ptree property_tree;
     boost::property_tree::ini_parser::read_ini(file_name, property_tree);
 
-    solve_step_count_ = property_tree.get<std::size_t>("SimParameters.number_solve_steps");
-    time_step_ = property_tree.get<Real>("SimParameters.time_step");
-    initial_global_particle_count_ = property_tree.get<std::size_t>("SimParameters.global_particle_count");
-    max_particles_local_ = property_tree.get<std::size_t>("SimParameters.max_particles_local");
-    gravity_ = property_tree.get<Real>("PhysicalParameters.g");
-    gamma_ = property_tree.get<Real>("PhysicalParameters.gamma");
-    visc_c_ = property_tree.get<Real>("PhysicalParameters.visc_c");
-    lambda_epsilon_ = property_tree.get<Real>("PhysicalParameters.lambda_epsilon");
-    k_stiff_ = property_tree.get<Real>("PhysicalParameters.k_stiff");
-    rest_density_ = property_tree.get<Real>("PhysicalParameters.density");
-    vorticity_coef_ = property_tree.get<Real>("PhysicalParameters.vorticity_coef");
+    solve_step_count_ = property_tree.get<std::size_t>("SimParameters.number_solve_steps", 0);
+    time_step_ = property_tree.get<Real>("SimParameters.time_step", 0.0);
+    initial_global_particle_count_ = property_tree.get<std::size_t>("SimParameters.global_particle_count", 0);
+    max_particles_local_ = property_tree.get<std::size_t>("SimParameters.max_particles_local", 0);
+    neighbor_bin_spacing_ = property_tree.get<Real>("SimParameters.neighbor_bin_spacing", 0);
 
-    boundary_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.min"));
-    boundary_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.max"));
+    gravity_ = property_tree.get<Real>("PhysicalParameters.g", 0);
+    gamma_ = property_tree.get<Real>("PhysicalParameters.gamma", 0);
+    visc_c_ = property_tree.get<Real>("PhysicalParameters.visc_c", 0);
+    lambda_epsilon_ = property_tree.get<Real>("PhysicalParameters.lambda_epsilon", 0);
+    k_stiff_ = property_tree.get<Real>("PhysicalParameters.k_stiff", 0);
+    rest_density_ = property_tree.get<Real>("PhysicalParameters.density", 0);
+    vorticity_coef_ = property_tree.get<Real>("PhysicalParameters.vorticity_coef", 0);
+    smoothing_radius_ = property_tree.get<Real>("PhysicalParameters.smoothing_radius", 0);
 
-    initial_fluid_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.min"));
-    initial_fluid_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.max"));
+    boundary_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.min", "0.0, 0.0, 0.0"));
+    boundary_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("Boundary.max", "0.0, 0.0, 0.0"));
 
-    mover_center_ = to_real_vec<Real,Dim>(property_tree.get<std::string>("Mover.center"));
+    initial_fluid_.min = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.min", "0.0, 0.0, 0.0"));
+    initial_fluid_.max = to_real_vec<Real,Dim>(property_tree.get<std::string>("InitialFluid.max", "0.0, 0.0, 0.0"));
+
+    mover_center_ = to_real_vec<Real,Dim>(property_tree.get<std::string>("Mover.center", "0.0, 0.0, 0.0"));
   }
 
   /**
@@ -85,31 +88,26 @@ public:
   void derive_from_input() {
     particle_rest_spacing_ = pow(initial_fluid_.volume() / initial_global_particle_count_, 1.0/Dim);
     particle_radius_ = particle_rest_spacing_/2.0;
-    smoothing_radius_ = 1.8*particle_rest_spacing_;
+
+    if(smoothing_radius_ == 0)
+      smoothing_radius_ = 1.8*particle_rest_spacing_;
+
+    if(neighbor_bin_spacing_ == 0)
+      neighbor_bin_spacing_ = 1.2*smoothing_radius_;
 
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(initial_fluid_, particle_rest_spacing_);
     std::size_t particle_count = product(particle_counts);
-    Real mass_fudge = 1.0;
     rest_mass_ = 1.0; //mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
     Real particle_volume = /*4.0/3.0 * M_PI **/ pow(particle_rest_spacing_ , 3.0);
     rest_density_ = rest_mass_ / particle_volume;
 
     emitter_center_ = boundary_.center();
-    emitter_velocity_ = Vec<Real,Dim>{1.0, 0.0, 0.0};
+    emitter_velocity_ = Vec<Real,Dim>{0.0};
 
-    std::cout<<"emitter_center: "<<emitter_center_<<std::endl;
-
-    std::cout<<"Max speed must be reset if smoothing radius changes\n";
+    // Max speed must be reset if smoothing radius changes
     max_speed_ = 0.5*smoothing_radius_*solve_step_count_ / time_step_;
 
     // @todo params print function to print them all
-    std::cout<<"rest_spacing: "<<particle_rest_spacing_<<std::endl;
-    std::cout<<"smootihng length: "<<smoothing_radius_<<std::endl;
-    std::cout<<"particle count: "<<particle_count<<std::endl;
-    std::cout<<"rest mass: "<<rest_mass_<<std::endl;
-    std::cout<<"density: "<<rest_density_<<std::endl;
-    std::cout<<"max speed: "<<max_speed_<<std::endl;
-    std::cout<<"time step: "<<time_step_<<std::endl;
   }
 
   /**
@@ -165,6 +163,14 @@ public:
   DEVICE_CALLABLE
   Real smoothing_radius() const {
     return smoothing_radius_;
+  }
+
+  /**
+    @return neighbor bin spacing
+  **/
+  DEVICE_CALLABLE
+  Real neighbor_bin_spacing() const {
+    return neighbor_bin_spacing_;
   }
 
   DEVICE_CALLABLE
@@ -305,13 +311,23 @@ public:
   }
 
   DEVICE_CALLABLE
-  ExecutionMode execution_mode() const {
-    return execution_mode_;
+  void pause_compute() {
+    simulation_mode_ = (Mode) (simulation_mode_ | Mode::PAUSE_COMPUTE);
   }
 
   DEVICE_CALLABLE
-  void toggle_computation_active() {
+  void activate_compute() {
+    simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::PAUSE_COMPUTE);
+  }
+
+  DEVICE_CALLABLE
+  void toggle_compute_paused() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::PAUSE_COMPUTE);
+  }
+
+  DEVICE_CALLABLE
+  ExecutionMode execution_mode() const {
+    return execution_mode_;
   }
 
   DEVICE_CALLABLE
@@ -330,26 +346,6 @@ public:
   }
 
   DEVICE_CALLABLE
-  void toggle_view_edit() {
-    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_VIEW);
-  }
-
-  DEVICE_CALLABLE
-  void disable_view_edit() {
-    simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_VIEW);
-  }
-
-  DEVICE_CALLABLE
-  void enable_view_edit() {
-    simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_VIEW);
-  }
-
-  DEVICE_CALLABLE
-  bool view_edit() const {
-    return simulation_mode_ & Mode::EDIT_VIEW;
-  }
-
-  DEVICE_CALLABLE
   bool emitter_active() const {
     return simulation_mode_ & Mode::EMITTER_ACTIVE;
   }
@@ -360,18 +356,38 @@ public:
   }
 
   DEVICE_CALLABLE
-  void toggle_emitter_edit() {
+  void toggle_edit_emitter() {
     simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_EMITTER);
   }
 
   DEVICE_CALLABLE
-  void disable_emitter_edit() {
+  void disable_edit_emitter() {
     simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_EMITTER);
   }
 
   DEVICE_CALLABLE
-  void enable_emitter_edit() {
+  void enable_edit_emitter() {
     simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_EMITTER);
+  }
+
+  DEVICE_CALLABLE
+  void toggle_edit_view() {
+    simulation_mode_ = (Mode) (simulation_mode_ ^ Mode::EDIT_VIEW);
+  }
+
+  DEVICE_CALLABLE
+  void disable_edit_view() {
+    simulation_mode_ = (Mode) (simulation_mode_ & ~Mode::EDIT_VIEW);
+  }
+
+  DEVICE_CALLABLE
+  void enable_edit_view() {
+    simulation_mode_ = (Mode) (simulation_mode_ | Mode::EDIT_VIEW);
+  }
+
+  DEVICE_CALLABLE
+  bool edit_view() const {
+    return simulation_mode_ & Mode::EDIT_VIEW;
   }
 
   DEVICE_CALLABLE
@@ -405,6 +421,7 @@ public:
   Real particle_rest_spacing_;
   Real particle_radius_;
   Real smoothing_radius_;
+  Real neighbor_bin_spacing_;
   Real rest_density_;
   Real rest_mass_;
   Real gravity_;

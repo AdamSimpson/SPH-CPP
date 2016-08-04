@@ -14,6 +14,7 @@ SCENARIO("Parameters can be created") {
         REQUIRE( p.particle_rest_spacing_ == Approx(0.03218f) );
         REQUIRE( p.particle_radius_ == Approx(0.5f * p.particle_rest_spacing_) );
         REQUIRE( p.smoothing_radius_ == Approx(1.8f * p.particle_rest_spacing_) );
+        REQUIRE( p.neighbor_bin_spacing_ == Approx(1.2f * p.smoothing_radius_ ) );
         REQUIRE( p.rest_density_  == Approx(29999.99609f) );
         REQUIRE( p.rest_mass_ == Approx(1.0f) );
         REQUIRE( p.gravity_  == Approx(-9.8f) );
@@ -47,7 +48,7 @@ SCENARIO("Parameters can be created") {
         REQUIRE( p.emitter_center_.y == Approx(p.boundary_.center().y) );
         REQUIRE( p.emitter_center_.z == Approx(p.boundary_.center().z) );
 
-        REQUIRE( p.emitter_velocity_.x == Approx(1.0f) );
+        REQUIRE( p.emitter_velocity_.x == Approx(0.0f) );
         REQUIRE( p.emitter_velocity_.y == Approx(0.0f) );
         REQUIRE( p.emitter_velocity_.z == Approx(0.0f) );
 

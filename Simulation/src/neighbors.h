@@ -8,32 +8,51 @@
 #include "parameters.h"
 #include "device.h"
 #include "sim_algorithms_on_the_fly.h"
+#include "iostream"
 
 namespace sim {
 
 #define MAX_NEIGHBORS 60
 
-struct NeighborBin {
+struct NeighborList {
   std::size_t neighbor_indices[MAX_NEIGHBORS];
   int count;
 };
 
 // Iterator for range based for loops over neighbor indices
 DEVICE_CALLABLE
-const std::size_t* begin(const NeighborBin& bin) {
-  return bin.neighbor_indices;
+const std::size_t* begin(const NeighborList& list) {
+  return list.neighbor_indices;
 }
 
 DEVICE_CALLABLE
-const std::size_t* end(const NeighborBin& bin) {
-  return bin.neighbor_indices + bin.count;
+const std::size_t* end(const NeighborList& list) {
+  return list.neighbor_indices + list.count;
 }
+
+// NVCC C++14 workaround for missing constexpr functionality
+#define neighbor_count() Dim == 2 ? 9 : 27
+
+/*
+template<Dimension Dim>
+const std::size_t neighbor_count() {
+  return 0;
+}
+template<>
+const std::size_t neighbor_count<2>() {
+  return 9;
+}
+template<>
+const std::size_t neighbor_count<3>() {
+  return 27;
+}
+*/
 
 template<typename Real, Dimension Dim>
 class Neighbors: public ManagedAllocation {
 public:
   Neighbors(const Parameters<Real,Dim>& parameters): parameters_{parameters},
-                                                     bin_spacing_{(Real)1.0*parameters.smoothing_radius()}, // Make bins slightly larger than smoothing radius
+                                                     bin_spacing_{parameters_.neighbor_bin_spacing()},
                                                      bin_dimensions_{static_cast<Vec<std::size_t,Dim>>(ceil(
                                                                                                             (parameters.boundary().extent())
                                                                                                             /bin_spacing_) + static_cast<Real>(2))},
@@ -41,20 +60,20 @@ public:
                                                      end_indices_{product(bin_dimensions_)},
                                                      bin_ids_{parameters.max_particles_local()},
                                                      particle_ids_{parameters.max_particles_local()},
-                                                     neighbor_bins_{parameters.max_particles_local()} {};
+                                                     neighbor_lists_{parameters.max_particles_local()} {};
 
 // Access neighbor bins with subscript operator
 DEVICE_CALLABLE
-const NeighborBin& operator[] (const std::size_t index) const {
-  return neighbor_bins_[index];
+const NeighborList& operator[] (const std::size_t index) const {
+  return neighbor_lists_[index];
 }
 
 /**
   return linearized bin value of Vec<Real,2>
   Each point is shifted by bin_spacing in each direction
   To account for a 1 block grid boundary. This boundary allows neighbors to easily
-  be searched for without worrying about boundary conditions
-
+  be searched for without worrying about boundary conditions.
+  bins works with [,) semantics
 **/
 DEVICE_CALLABLE
 std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
@@ -68,7 +87,7 @@ std::size_t calculate_bin_id(const Vec<Real,2>& point) const {
   Each point is shifted by bin_spacing in each direction
   To account for a 1 block grid boundary. This boundary allows neighbors to easily
   be searched for without worrying about boundary conditions
-
+  bins works with [,) semantics
 **/
 DEVICE_CALLABLE
 std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
@@ -147,32 +166,30 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     }
   }
 
+  // Requires C++14
+  /*
   constexpr std::size_t neighbor_count() const {
     return static_cast<std::size_t>(pow(3, Dim));
-  }
+  }*/
 
   /**
      Fill the neighbor bins in the specified particle span
    **/
   void fill_neighbors(IndexSpan span, const Vec<Real,Dim>* position_stars) {
-    //    auto index = calculate_bin_id(Vec<Real,3>{55.0,55.0,55.0});
-    //    std::cout<<"index "<<index<<"bins: "<<neighbor_bins_[index].count<<std::endl;
-
-    // Allow particles in neighbor list slightly outside of radius to allow movement during substeps
     const Real valid_radius_squared = bin_spacing_ * bin_spacing_;
 
     sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t particle_index) {
         const auto position_star = position_stars[particle_index];
-        auto& bin = neighbor_bins_[particle_index];
+        auto& list = neighbor_lists_[particle_index];
+
+        // Zero out neighbor count for current list
+        list.count = 0;
+
         // @todo NVCC doesn't like this constexpr
         // std::size_t neighbor_bin_indices[neighbor_count()];
-        std::size_t neighbor_bin_indices[27];
-
-        // Zero out neighbor count for current bin
-        neighbor_bins_[particle_index].count = 0;
+        std::size_t neighbor_bin_indices[neighbor_count()];
 
         calculate_neighbor_indices(position_stars[particle_index], neighbor_bin_indices);
-
         for(auto neighbor_bin_index : neighbor_bin_indices) {
           const auto begin_index = begin_indices_[neighbor_bin_index];
           const auto end_index   = end_indices_[neighbor_bin_index];
@@ -183,9 +200,9 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
 
             const auto neighbor_position_star = position_stars[neighbor_particle_index];
             const Real distance_squared = magnitude_squared(position_star - neighbor_position_star);
-            if(distance_squared < valid_radius_squared && bin.count < MAX_NEIGHBORS) {
-              bin.neighbor_indices[bin.count] = neighbor_particle_index;
-              ++bin.count;
+            if(distance_squared < valid_radius_squared && list.count < MAX_NEIGHBORS) {
+              list.neighbor_indices[list.count] = neighbor_particle_index;
+              ++list.count;
             }
           }
         }
@@ -196,7 +213,7 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     Find all particle neighbors.
     particles_to_bin_span is the span of particles to bin/sort
     particles_to_fill_span is the span of particles to fill in neighbors for
-    This is seperate as we need to bin/sort resident + halo(local) but
+    This is seperate as we need to bin/sort resident + halo(total local) but
     Only need to fill neighbors for resident
   **/
   void find(const IndexSpan& particles_to_bin_span, const IndexSpan& particles_to_fill_span,
@@ -208,13 +225,17 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
     this->fill_neighbors(particles_to_fill_span, coords);
   }
 
+  Vec<std::size_t, Dim> bin_dimensions() const {
+    return bin_dimensions_;
+  }
+
   ~Neighbors()                           = default;
   Neighbors(const Neighbors&)            = default;
   Neighbors& operator=(const Neighbors&) = default;
   Neighbors(Neighbors&&) noexcept        = default;
   Neighbors& operator=(Neighbors&&)      = default;
 
-  sim::Array<NeighborBin> neighbor_bins_;
+  sim::Array<NeighborList> neighbor_lists_;
 
 private:
   const Parameters<Real,Dim>& parameters_;

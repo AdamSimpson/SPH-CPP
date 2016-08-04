@@ -2,42 +2,7 @@
 #include "kernels.h"
 #include "vec.h"
 #include <vector>
-
-/**
-  Construct x_dim by y_dim grid of points spaced h apart
-**/
- std::vector< Vec<float,2> > construct_points(int x_dim, int y_dim, float h) {
-  std::vector< Vec<float,2> > points;
-
-  for(int j=0; j < y_dim; j++) {
-    for(int i=0; i < x_dim; i++) {
-      float x = h * i;
-      float y = h * j;
-      points.push_back( Vec<float,2>(x,y) );
-    }
-  }
-  return points;
-}
-
-/**
-  Construct x_dim by y_dim by z_dim grid of points spaced h apart
-**/
- std::vector< Vec<float,3> > construct_points(int x_dim, int y_dim, int z_dim, float h) {
-  std::vector< Vec<float,3> > points;
-
-  for(int k=0; k < z_dim; k++) {
-    for(int j=0; j < y_dim; j++) {
-      for(int i=0; i < x_dim; i++) {
-        float x = h * i;
-        float y = h * j;
-        float z = h * k;
-
-        points.push_back( Vec<float,3>(x,y,z) );
-      }
-    }
-  }
-  return points;
-}
+#include "builders.h"
 
 SCENARIO("Poly6 Kernels function correctly") {
   GIVEN("a Poly6<float,2>, k with h = 0.05") {
