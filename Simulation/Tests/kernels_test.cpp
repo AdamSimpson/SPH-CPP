@@ -83,24 +83,24 @@ SCENARIO("Del_Poly6 Kernels function correctly") {
     const float h = 0.05f;
     sim::Del_Poly6<float,2> k(h);
     WHEN("it is evaluated at r_mag = h") {
-      Vec<float,2> p{0.0};
-      Vec<float,2> q{h/sqrt(2.0), h/sqrt(2.0)};
+      Vec<float,2> p{0.0f};
+      Vec<float,2> q{h/std::sqrt(2.0f), h/std::sqrt(2.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag > h") {
       Vec<float,2> p{0.0};
-      Vec<float,2> q{h/sqrt(2.0) + 0.001, h/sqrt(2.0)};
+      Vec<float,2> q{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag == 0.0") {
-      Vec<float,2> p{h/sqrt(2.0) + 0.001, h/sqrt(2.0)};
-      Vec<float,2> q{h/sqrt(2.0) + 0.001, h/sqrt(2.0)};
+      Vec<float,2> p{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f)};
+      Vec<float,2> q{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
         REQUIRE( magnitude(result) == Approx(0.0) );
@@ -112,8 +112,8 @@ SCENARIO("Del_Poly6 Kernels function correctly") {
     const float h = 0.05f;
     sim::Del_Poly6<float,3> k(h);
     WHEN("it is evaluated at r_mag = h") {
-      Vec<float,3> p{0.0};
-      Vec<float,3> q{h/sqrt(3.0), h/sqrt(3.0), h/sqrt(3.0)};
+      Vec<float,3> p{0.0f};
+      Vec<float,3> q{h/std::sqrt(3.0f), h/std::sqrt(3.0f), h/std::sqrt(3.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
         REQUIRE( magnitude(result) == Approx(0.0) );
@@ -121,15 +121,15 @@ SCENARIO("Del_Poly6 Kernels function correctly") {
     }
     WHEN("it's evaluated at r_mag > h") {
       Vec<float,3> p{0.0};
-      Vec<float,3> q{h/sqrt(3.0) + 0.001, h/sqrt(3.0), h/sqrt(3.0)};
+      Vec<float,3> q{h/std::sqrt(3.0f) + 0.001f, h/std::sqrt(3.0f), h/std::sqrt(3.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag == 0.0") {
-      Vec<float,3> p{h/sqrt(2.0) + 0.001, h/sqrt(2.0), h};
-      Vec<float,3> q{h/sqrt(2.0) + 0.001, h/sqrt(2.0), h};
+      Vec<float,3> p{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f), h};
+      Vec<float,3> q{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f), h};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
         REQUIRE( magnitude(result) == Approx(0.0) );
@@ -144,18 +144,18 @@ SCENARIO("Del_Spikey Kernels function correctly") {
     sim::Del_Poly6<float,2> k(h);
     WHEN("it is evaluated at r_mag = h") {
       Vec<float,2> p{0.0};
-      Vec<float,2> q{h/sqrt(2.0), h/sqrt(2.0)};
+      Vec<float,2> q{h/std::sqrt(2.0f), h/std::sqrt(2.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag > h") {
       Vec<float,2> p{0.0};
-      Vec<float,2> q{h/sqrt(2.0) + 0.001, h/sqrt(2.0)};
+      Vec<float,2> q{h/std::sqrt(2.0f) + 0.001f, h/std::sqrt(2.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
   }
@@ -165,7 +165,7 @@ SCENARIO("Del_Spikey Kernels function correctly") {
     sim::Del_Spikey<float,3> k(h);
     WHEN("it is evaluated at r_mag = h") {
       Vec<float,3> p{0.0};
-      Vec<float,3> q{h/sqrt(3.0), h/sqrt(3.0), h/sqrt(3.0)};
+      Vec<float,3> q{h/std::sqrt(3.0f), h/std::sqrt(3.0f), h/std::sqrt(3.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
         REQUIRE( magnitude(result) == Approx(0.0) );
@@ -173,10 +173,10 @@ SCENARIO("Del_Spikey Kernels function correctly") {
     }
     WHEN("it's evaluated at r_mag > h") {
       Vec<float,3> p{0.0};
-      Vec<float,3> q{h/sqrt(3.0) + 0.001, h/sqrt(3.0), h/sqrt(3.0)};
+      Vec<float,3> q{h/std::sqrt(3.0f) + 0.001f, h/std::sqrt(3.0f), h/std::sqrt(3.0f)};
       const auto result = k(p, q);
       THEN("the result should be 0.0") {
-        REQUIRE( magnitude(result) == Approx(0.0) );
+        REQUIRE( magnitude(result) == Approx(0.0f) );
       }
     }
   }
@@ -188,12 +188,12 @@ SCENARIO("C_Spline Kernels function correctly") {
     sim::C_Spline<float,2> k(h);
     WHEN("it is evaluated at r_mag = h") {
       THEN("the result should be 0.0") {
-        REQUIRE( k(h) == Approx(0.0) );
+        REQUIRE( k(h) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag > h") {
       THEN("the result should be 0.0") {
-        REQUIRE( k(h + h*0.01) == Approx(0.0) );
+        REQUIRE( k(h + h*0.01f) == Approx(0.0f) );
       }
     }
   }
@@ -203,12 +203,12 @@ SCENARIO("C_Spline Kernels function correctly") {
     sim::C_Spline<float,3> k(h);
     WHEN("it is evaluated at r_mag = h") {
       THEN("the result should be 0.0") {
-        REQUIRE( k(h) == Approx(0.0) );
+        REQUIRE( k(h) == Approx(0.0f) );
       }
     }
     WHEN("it's evaluated at r_mag > h") {
       THEN("the result should be 0.0") {
-        REQUIRE( k(h + h*0.01) == Approx(0.0) );
+        REQUIRE( k(h + h*0.01f) == Approx(0.0f) );
       }
     }
   }

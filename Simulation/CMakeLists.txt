@@ -8,7 +8,7 @@ set(CXX_STANDARD_REQUIRED TRUE)
 
 # Set source files
 file(GLOB SRC_FILES src/*.cpp)
-file(GLOB TEST_SRC_FILES Tests/*.cpp)
+file(GLOB TEST_SRC_FILES src/neighbors.cpp Tests/*.cpp)
 
 # Add a bit more verbose output
 add_definitions(-Wall)
@@ -31,7 +31,7 @@ add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Add includes
-include_directories(".", "./src")
+include_directories("." "./src")
 include_directories(sph, ${CMAKE_CURRENT_SOURCE_DIR}/../Common)
 include_directories(${MPI_INCLUDE_PATH})
 include_directories(${Boost_INCLUDE_DIRS})
@@ -59,11 +59,11 @@ if(${OPENMP})
   set_source_files_properties(${SRC_FILES} PROPERTIES LANGUAGE CXX)
   add_executable(sph ${SRC_FILES})
   add_executable(sph_tests ${TEST_SRC_FILES})
-  add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP")
+  add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -DOPENMP")
   set_target_properties(sph PROPERTIES LINKER_LANGUAGE CXX)
 endif()
 
-# Setup for CUDA and OPENMP
+# Setup for CUDA and OPENMP( Only works with sim_algorithms_on_the_fly.h )
 if(${CUDA_AND_OPENMP})
   Message("Enabling CUDA")
   find_package(CUDA REQUIRED)
@@ -74,6 +74,14 @@ if(${CUDA_AND_OPENMP})
   cuda_add_executable(sph ${SRC_FILES})
   cuda_add_executable(sph_tests ${TEST_SRC_FILES})
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+# Setup for cpp backend
+if(${CPP_PAR})
+  Message("Enabling CPP")
+  add_executable(sph ${SRC_FILES})
+  add_executable(sph_tests ${TEST_SRC_FILES})
+  add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP -DCPP_PAR -Wno-unused-local-typedef")
 endif()
 
 add_dependencies(sph_tests catch)

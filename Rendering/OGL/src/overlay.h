@@ -102,7 +102,6 @@ public:
   }
 
 private:
-  TextRenderer text_renderer_;
   Parameters<Real,Dim>& parameters_;
   glm::vec2 screen_dims_;
   // List of tunable overlay entries
@@ -119,6 +118,8 @@ private:
   std::map< std::string, std::function<void()> > tunable_decrease_;
 
   const int text_size_; // text size in pixels
+
+  TextRenderer text_renderer_;
 
   glm::vec3 tunable_color(const std::string& tunable_name) const {
     const glm::vec3 green{0.1f, 0.8f, 0.43f};

@@ -16,7 +16,7 @@
 using Real = float;
 static const Dimension Dim = three_dimensional;
 
-double update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &clock_start,
+void update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &clock_start,
                   sim::Overlay<Real,Dim>& overlay) {
   double fps;
   auto clock_end{std::chrono::high_resolution_clock::now()};

@@ -6,7 +6,7 @@
 SCENARIO( "Vecs can be constructed", "[Vec]" ) {
   GIVEN("Nothing") {
     WHEN("a Vec<float,2> is constructed") {
-      Vec<float,2> v();
+      Vec<float,2> v;
       THEN("no error occurs") {}
     }
 

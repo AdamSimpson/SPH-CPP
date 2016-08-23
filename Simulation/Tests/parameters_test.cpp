@@ -1,6 +1,5 @@
 #include "catch.hpp"
 #include "parameters.h"
-#include "execution_mode.h"
 
 SCENARIO("Parameters can be created") {
   GIVEN("params_test.ini") {

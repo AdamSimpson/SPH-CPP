@@ -12,7 +12,7 @@ void Utility::check_gl() {
   GLenum err = glGetError();
   if(err != GL_NO_ERROR) {
     std::cout<<"check_gl failure: "<<err<<std::endl;
-    throw std::runtime_error("OGL Failure: " + err);
+    throw std::runtime_error("OGL Failure: " + std::to_string(err));
   }
 }
 
@@ -34,7 +34,7 @@ void Utility::link_program(GLuint program) {
   glGetProgramiv(program, GL_LINK_STATUS, &is_linked);
   if(is_linked == GL_FALSE) {
     print_program_log(program);
-    throw std::runtime_error("Could not link program: " + program);
+    throw std::runtime_error("Could not link program: " + std::to_string(program));
   }
 }
 

@@ -1,4 +1,3 @@
-#define CUDA_DEBUG
 #ifdef CUDA_DEBUG
 
 #include <nvToolsExt.h>

@@ -14,7 +14,7 @@
 #include "parameters.h"
 #include "mpi++.h"
 #include "device.h"
-#include "sim_algorithms_on_the_fly.h"
+#include "sim_algorithms.h"
 
 /***
   The distributor is responsible for all domain-to-domain communication as

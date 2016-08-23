@@ -28,6 +28,7 @@ include_directories(${Boost_INCLUDE_DIRS})
 target_link_libraries(sph-renderer ${Boost_LIBRARIES})
 
 find_package(SDL2 REQUIRED)
+string(STRIP ${SDL2_LIBRARIES} SDL2_LIBRARIES) # ignore SDL2_LIBRARIES trailing white space
 include_directories(${SDL2_INCLUDE-DIRS})
 target_link_libraries(sph-renderer ${SDL2_LIBRARIES})
 

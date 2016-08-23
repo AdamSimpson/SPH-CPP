@@ -7,46 +7,23 @@
 #include "vec.h"
 #include "parameters.h"
 #include "device.h"
-#include "sim_algorithms_on_the_fly.h"
+#include "sim_algorithms.h"
 #include "iostream"
 
 namespace sim {
 
 #define MAX_NEIGHBORS 60
 
-struct NeighborList {
-  std::size_t neighbor_indices[MAX_NEIGHBORS];
-  int count;
-};
-
-// Iterator for range based for loops over neighbor indices
-DEVICE_CALLABLE
-const std::size_t* begin(const NeighborList& list) {
-  return list.neighbor_indices;
-}
-
-DEVICE_CALLABLE
-const std::size_t* end(const NeighborList& list) {
-  return list.neighbor_indices + list.count;
-}
+  struct NeighborList {
+    std::size_t neighbor_indices[MAX_NEIGHBORS];
+    int count;
+  };
 
 // NVCC C++14 workaround for missing constexpr functionality
 #define neighbor_count() Dim == 2 ? 9 : 27
 
-/*
-template<Dimension Dim>
-const std::size_t neighbor_count() {
-  return 0;
-}
-template<>
-const std::size_t neighbor_count<2>() {
-  return 9;
-}
-template<>
-const std::size_t neighbor_count<3>() {
-  return 27;
-}
-*/
+  const std::size_t *begin(const NeighborList &list);
+  const std::size_t *end(const NeighborList &list);
 
 template<typename Real, Dimension Dim>
 class Neighbors: public ManagedAllocation {
@@ -235,8 +212,6 @@ std::size_t calculate_bin_id(const Vec<Real,3>& point) const {
   Neighbors(Neighbors&&) noexcept        = default;
   Neighbors& operator=(Neighbors&&)      = default;
 
-  sim::Array<NeighborList> neighbor_lists_;
-
 private:
   const Parameters<Real,Dim>& parameters_;
 
@@ -247,5 +222,7 @@ private:
   sim::Array<std::size_t> end_indices_;   // End indices for bin ids
   sim::Array<std::size_t> bin_ids_;   // Array of bin ids
   sim::Array<std::size_t> particle_ids_;  // Array of particle ids
+
+  sim::Array<NeighborList> neighbor_lists_;
 };
 }

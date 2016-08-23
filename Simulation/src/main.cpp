@@ -40,7 +40,9 @@ int main(int argc, char *argv[]) {
 
       if(parameters->compute_active()) {
         distributor.process_parameters(*parameters, *particles);
-        sim::algorithms::process_parameters(*parameters);
+
+          // Only for sim_algorithms_on_the_fly
+//        sim::algorithms::process_parameters(*parameters);
 
         particles->apply_external_forces(distributor.resident_span());
 

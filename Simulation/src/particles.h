@@ -8,6 +8,7 @@
 #include "neighbors.h"
 #include "kernels.h"
 #include "device.h"
+#include "sim_algorithms.h"
 #include <limits>
 
 /**
@@ -36,10 +37,10 @@ public:
 
   Particles()                            = delete;
   ~Particles()                           = default;
-  Particles(const Particles&)            = default;
-  Particles& operator=(const Particles&) = default;
-  Particles(Particles&&) noexcept        = default;
-  Particles& operator=(Particles&&)      = default;
+  Particles(const Particles&)            = delete;
+  Particles& operator=(const Particles&) = delete;
+  Particles(Particles&&) noexcept        = delete;
+  Particles& operator=(Particles&&)      = delete;
 
   /**
     @return number of node/process local particles currently in use
@@ -344,7 +345,7 @@ public:
   void update_position_stars(IndexSpan span){
     sim::algorithms::for_each_index(span, [=] DEVICE_CALLABLE (std::size_t p) {
         // scratch contains delta positions
-        const auto position_star_p_old = position_stars_[p];
+//        const auto position_star_p_old = position_stars_[p];
         auto position_star_p_new = position_stars_[p] + scratch_[p];
         apply_boundary_conditions(position_star_p_new, parameters_);
         position_stars_[p] = position_star_p_new;
@@ -490,4 +491,5 @@ void apply_boundary_conditions(Vec<Real,Dim>& position,
   // Clamp inside boundary
   clamp_in_place(position, boundary.min, boundary.max);
 }
+
 }

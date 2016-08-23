@@ -96,7 +96,7 @@ public:
       neighbor_bin_spacing_ = 1.2*smoothing_radius_;
 
     Vec<std::size_t,Dim> particle_counts = bin_count_in_volume(initial_fluid_, particle_rest_spacing_);
-    std::size_t particle_count = product(particle_counts);
+//    std::size_t particle_count = product(particle_counts);
     rest_mass_ = 1.0; //mass_fudge * initial_fluid_.volume() * rest_density_ / particle_count;
     Real particle_volume = /*4.0/3.0 * M_PI **/ pow(particle_rest_spacing_ , 3.0);
     rest_density_ = rest_mass_ / particle_volume;
