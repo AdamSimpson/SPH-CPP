@@ -29,6 +29,7 @@ find_package(ADIOS)
 add_subdirectory(External/catch)
 add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
+include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
 
 # Add includes
 include_directories("." "./src")
@@ -92,6 +93,10 @@ if(${CUDA_DEBUG})
   target_link_libraries(sph ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
   target_link_libraries(sph_tests ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
 endif()
+
+# Copy .ini runtime files needed for tests
+file(GLOB TEST_INI_FILES Tests/*.ini)
+file(COPY ${TEST_INI_FILES} DESTINATION .)
 
 target_link_libraries(sph ${MPI_C_LIBRARIES})
 target_link_libraries(sph ${Boost_LIBRARIES})
