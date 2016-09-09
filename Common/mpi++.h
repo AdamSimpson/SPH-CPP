@@ -36,7 +36,8 @@ THE SOFTWARE.
 #include "execution_mode.h"
 
 extern "C" {
-#define OMPI_SKIP_MPICXX // Disable C++ bindings
+#define OMPI_SKIP_MPICXX  // Disable C++ bindings OpenMPI
+#define MPICH_SKIP_MPICXX // Disable C++ bindings MPICH
 #include "mpi.h"
 }
 
