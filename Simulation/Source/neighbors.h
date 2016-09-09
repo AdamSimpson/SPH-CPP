@@ -215,7 +215,7 @@ namespace sim {
 
           for (auto j = begin_index; j < end_index; ++j) {
             const std::size_t neighbor_particle_index = particle_ids_[j];
-            if (particle_index == neighbor_particle_index)œœ
+            if (particle_index == neighbor_particle_index)
               continue;
 
             const auto neighbor_position_star = position_stars[neighbor_particle_index];
