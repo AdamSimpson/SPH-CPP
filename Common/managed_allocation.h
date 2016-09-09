@@ -35,8 +35,8 @@ THE SOFTWARE.
  */
 class ManagedAllocation {
 public:
-  ManagedAllocation()                                    = default; // Required for inheritance
-  ~ManagedAllocation()                                   = default; // Required for inheritance
+  ManagedAllocation()                                    = default;
+  virtual ~ManagedAllocation()                           = default;
   ManagedAllocation(const ManagedAllocation&)            = delete;
   ManagedAllocation& operator=(const ManagedAllocation&) = delete;
   ManagedAllocation(ManagedAllocation&&) noexcept        = delete;

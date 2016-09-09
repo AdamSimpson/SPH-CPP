@@ -42,8 +42,6 @@ THE SOFTWARE.
     #include <nvToolsExtCudaRt.h>
 
 // @todo is this reasonable?
-// This seems super janky with everything static
-// Having all the algorithms derived from an object also seems janky
 namespace sim {
   class algorithms {
 

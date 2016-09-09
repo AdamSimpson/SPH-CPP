@@ -65,14 +65,14 @@ public:
     for (std::size_t n : particle_counts_)
       receive_count += n;
 
-    // Ensure enough space is available in receieve buffer
+    // Ensure enough space is available in receive buffer
     particle_positions_.resize(receive_count);
 
     // Gather particle vec coordinates
     std::vector<int> particle_counts_int(particle_counts_.begin(), particle_counts_.end());
     comm_world_.gatherv(particle_positions_.data(), particle_counts_int, MPI_VEC_);
 
-    // Remove renderers 0 count from particle_counts
+    // Remove renderer 0 count from particle_counts
     particle_counts_.erase(particle_counts_.begin());
   }
 

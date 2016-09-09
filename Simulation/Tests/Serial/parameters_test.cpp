@@ -84,7 +84,7 @@ SCENARIO("Parameters can be created") {
 }
 
 SCENARIO("The simulation_mode can be modified") {
-  GIVEN("parameters<float,3>, p, are intialized with params_test.ini") {
+  GIVEN("parameters<float,3>, p, are initialized with params_test.ini") {
     sim::Parameters<float,3> p{"params_test.ini"};
 
     WHEN("The parameters are initialized") {

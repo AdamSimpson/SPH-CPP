@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     sim::AdiosWriter<float, three_dimensional> writer{"adios_writer.xml",distributor};
 
     // After particles have been created construct initial fluid
-    distributor.initilize_fluid(*particles, *parameters);
+    distributor.initialize_fluid(*particles, *parameters);
 
     int64_t step = 0;
 

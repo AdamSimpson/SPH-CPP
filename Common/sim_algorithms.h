@@ -61,7 +61,7 @@ namespace sim {
     }
 
     /*! Wrapper around thrust::lower_bound applied to span using cuda device
-     * @param begin       Iterator to begining of ordered range
+     * @param begin       Iterator to beginning of ordered range
      * @param end         Iterator to end of ordered range
      * @param search_span Span over which the search will be preformed
      * @param result      Iterator to beginning of the output sequence
@@ -80,7 +80,7 @@ namespace sim {
     }
 
     /*! Wrapper around thrust::upper_bound applied to span using cpp device
-     * @param begin       Iterator to begining of ordered range
+     * @param begin       Iterator to beginning of ordered range
      * @param end         Iterator to end of ordered range
      * @param search_span Span over which the search will be preformed
      * @param result      Iterator to beginning of the output sequence
@@ -137,7 +137,7 @@ namespace sim {
     }
 
     /*! Wrapper around thrust::lower_bound applied to span using OpenMP device
-     * @param begin       Iterator to begining of ordered range
+     * @param begin       Iterator to beginning of ordered range
      * @param end         Iterator to end of ordered range
      * @param search_span Span over which the search will be preformed
      * @param result      Iterator to beginning of the output sequence
@@ -155,7 +155,7 @@ namespace sim {
     }
 
     /*! Wrapper around thrust::upper_bound applied to span using OpenMP device
-     * @param begin       Iterator to begining of ordered range
+     * @param begin       Iterator to beginning of ordered range
      * @param end         Iterator to end of ordered range
      * @param search_span Span over which the search will be preformed
      * @param result      Iterator to beginning of the output sequence

@@ -28,6 +28,7 @@ THE SOFTWARE.
 #include <type_traits>
 
 SCENARIO( "Vecs can be constructed", "[Vec]" ) {
+
   GIVEN("Nothing") {
     WHEN("a Vec<float,2> is constructed") {
       Vec<float,2> v;
@@ -265,7 +266,7 @@ SCENARIO( "Vecs can be decremented and incremented", "[Vec]" ) {
   GIVEN("a Vec<float,3> v and a float s") {
     Vec<float,3> v(0.0f, 1.0f, 2.0f);
     const float s = 1.0f;
-    WHEN("v is incrimented by s") {
+    WHEN("v is incremented by s") {
       const auto v_orig(v);
       v += s;
       THEN("v should be incremented component wise by s") {
@@ -274,7 +275,7 @@ SCENARIO( "Vecs can be decremented and incremented", "[Vec]" ) {
         REQUIRE( v[2] == Approx(v_orig[2] + s) );
       }
     }
-    WHEN("v is decrimented by s") {
+    WHEN("v is decremented by s") {
       const auto v_orig(v);
       v -= s;
       THEN("v should be decremented component wise by s") {
@@ -316,7 +317,7 @@ SCENARIO( "Vecs can be multiply and divide equaled", "[Vec]" ) {
     WHEN("v is multiplied equaled by s") {
       const auto v_orig(v);
       v *= s;
-      THEN("v should be multipled component wise by s") {
+      THEN("v should be multiplied component wise by s") {
         REQUIRE( v[0] == Approx(v_orig[0] * s) );
         REQUIRE( v[1] == Approx(v_orig[1] * s) );
         REQUIRE( v[2] == Approx(v_orig[2] * s) );
@@ -444,12 +445,12 @@ SCENARIO( "Vecs have utility math functions", "[Vec]" ) {
     }
     WHEN("v is clamped in place between v_l and v_u") {
       clamp_in_place(v, v_l, v_u);
-      THEN("each component should be greater than the coresponding component in v_l") {
+      THEN("each component should be greater than the corresponding component in v_l") {
         REQUIRE( v[0] >= v_l[0] );
         REQUIRE( v[1] >= v_l[1] );
         REQUIRE( v[2] >= v_l[2] );
       }
-      AND_THEN("each component should be less than or equal to the coresponding component in v_u") {
+      AND_THEN("each component should be less than or equal to the corresponding component in v_u") {
         REQUIRE( v[0] <= v_u[0] );
         REQUIRE( v[1] <= v_u[1] );
         REQUIRE( v[2] <= v_u[2] );

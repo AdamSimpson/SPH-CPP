@@ -31,10 +31,9 @@ THE SOFTWARE.
 // Smoothing radius is set to the particle rest spacing to simplify thing
 
 SCENARIO("A distributor can be constructed") {
-  GIVEN("an initilized distibutor<float,2> with 3 processes") {
+  GIVEN("an initializeddistributorr<float,2> with 3 processes") {
     sim::Distributor<float, 2> d{false};
     sim::Parameters<float, 2> params{"distributor_test.ini"};
-    sim::Particles<float, 2> particles{params};
     WHEN("comm_compute_ is queried for basic information") {
       THEN("comm_compute knows about its neighbors") {
         REQUIRE(d.comm_compute_.size() == 3);
@@ -56,10 +55,9 @@ SCENARIO("A distributor can be constructed") {
     }
   }
 
-  GIVEN("an initilized distibutor<float,3> with 3 processes") {
+  GIVEN("an initialized distributorr<float,3> with 3 processes") {
     sim::Distributor<float, 3> d{false};
     sim::Parameters<float, 3> params{"distributor_test.ini"};
-    sim::Particles<float, 3> particles{params};
     WHEN("comm_compute_ is queried for basic information") {
       THEN("comm_compute knows about its neighbors") {
         REQUIRE(d.comm_compute_.size() == 3);
@@ -83,12 +81,12 @@ SCENARIO("A distributor can be constructed") {
 }
 
 SCENARIO("A distributor can initialize fluid") {
-  GIVEN("an initialized distibutor<float,2> with 3 processes") {
+  GIVEN("an initialized distributor<float,2> with 3 processes") {
     sim::Distributor<float, 2> d{false};
     sim::Parameters<float, 2> params{"distributor_test.ini"};
     sim::Particles<float, 2> particles{params};
-    WHEN("the distributor initlizes the fluid") {
-      d.initilize_fluid(particles, params);
+    WHEN("the distributor initializes the fluid") {
+      d.initialize_fluid(particles, params);
       THEN("the domain bounds are correct") {
         if (d.comm_compute_.rank() == 0) {
           REQUIRE(d.domain_.begin == Approx(0.0f));
@@ -106,12 +104,12 @@ SCENARIO("A distributor can initialize fluid") {
     }
   }
 
-  GIVEN("an initialized distibutor<float,3> with 3 processes") {
+  GIVEN("an initialized distributor<float,3> with 3 processes") {
     sim::Distributor<float, 3> d{false};
     sim::Parameters<float, 3> params{"distributor_test.ini"};
     sim::Particles<float, 3> particles{params};
     WHEN("the distributor initializes the fluid") {
-      d.initilize_fluid(particles, params);
+      d.initialize_fluid(particles, params);
       THEN("the domain bounds are correct") {
         if (d.comm_compute_.rank() == 0) {
           REQUIRE(d.domain_.begin == Approx(0.0f));
@@ -129,12 +127,12 @@ SCENARIO("A distributor can initialize fluid") {
     }
   }
 
-  GIVEN("an initialized distibutor<float,2> with 3 processes") {
+  GIVEN("an initialized distributor<float,2> with 3 processes") {
     sim::Distributor<float, 2> d{false};
     sim::Parameters<float, 2> params{"distributor_test.ini"};
     sim::Particles<float, 2> particles{params};
-    WHEN("the distributor initlizes the fluid") {
-      d.initilize_fluid(particles, params);
+    WHEN("the distributor initializes the fluid") {
+      d.initialize_fluid(particles, params);
       THEN("the particle count should be correct") {
         if (d.comm_compute_.rank() == 0) {
           REQUIRE(particles.local_count() == 12);
@@ -154,7 +152,7 @@ SCENARIO("A distributor can initialize fluid") {
     sim::Parameters<float, 3> params{"distributor_test.ini"};
     sim::Particles<float, 3> particles{params};
     WHEN("the distributor initializes the fluid") {
-      d.initilize_fluid(particles, params);
+      d.initialize_fluid(particles, params);
       THEN("the particle count should be correct") {
         if (d.comm_compute_.rank() == 0) {
           REQUIRE(particles.local_count() == 12);
@@ -175,7 +173,7 @@ SCENARIO("When halos are exchanged spans and counts are computed correct") {
     sim::Distributor<float, 3> d{false};
     sim::Parameters<float, 3> params{"distributor_test.ini"};
     sim::Particles<float, 3> particles{params};
-    d.initilize_fluid(particles, params);
+    d.initialize_fluid(particles, params);
     WHEN("the domains are synced so edge and halo particles are known") {
       d.invalidate_halo(particles);
       d.domain_sync(particles);
@@ -264,7 +262,7 @@ SCENARIO("When halos are exchanged spans and counts are computed correct") {
     sim::Distributor<float, 2> d{false};
     sim::Parameters<float, 2> params{"distributor_test.ini"};
     sim::Particles<float, 2> particles{params};
-    d.initilize_fluid(particles, params);
+    d.initialize_fluid(particles, params);
     WHEN("the domains are synced so edge and halo particles are known") {
       d.invalidate_halo(particles);
       d.domain_sync(particles);
@@ -355,7 +353,7 @@ SCENARIO("When out of bound particles are exchanged spans and counts are compute
     sim::Distributor<float, 3> d{false};
     sim::Parameters<float, 3> params{"distributor_test.ini"};
     sim::Particles<float, 3> particles{params};
-    d.initilize_fluid(particles, params);
+    d.initialize_fluid(particles, params);
     WHEN("the a left most particle is moved from rank 0 to rank 1 and domains are synced") {
       if(d.comm_compute_.rank() == 0) {
         particles.position_stars()[0].x = 3.1;
@@ -459,7 +457,7 @@ SCENARIO("When out of bound particles are exchanged spans and counts are compute
     sim::Distributor<float, 2> d{false};
     sim::Parameters<float, 2> params{"distributor_test.ini"};
     sim::Particles<float, 2> particles{params};
-    d.initilize_fluid(particles, params);
+    d.initialize_fluid(particles, params);
     WHEN("the a left most particle is moved from rank 0 to rank 1 and domains are synced") {
       if(d.comm_compute_.rank() == 0) {
         particles.position_stars()[0].x = 3.1;

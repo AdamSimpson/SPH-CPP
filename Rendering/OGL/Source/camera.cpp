@@ -48,14 +48,14 @@ void Camera::init() {
   /**
     init view matrix uniform
   **/
-  glGenBuffers(1, &matricies_UBO_);
+  glGenBuffers(1, &matrices_UBO_);
 
   // Create and Allocate buffer storage
-  glBindBuffer(GL_UNIFORM_BUFFER, matricies_UBO_);
+  glBindBuffer(GL_UNIFORM_BUFFER, matrices_UBO_);
   glBufferData(GL_UNIFORM_BUFFER, sizeof(glm::mat4) * 2, NULL, GL_STREAM_DRAW);
 
   // Attach to binding index
-  glBindBufferRange(GL_UNIFORM_BUFFER, Camera::binding_index, matricies_UBO_,
+  glBindBufferRange(GL_UNIFORM_BUFFER, Camera::binding_index, matrices_UBO_,
                     0, sizeof(glm::mat4) * 2);
   // Unbind
   glBindBuffer(GL_UNIFORM_BUFFER, 0);
@@ -117,7 +117,7 @@ void Camera::update(float aspect_ratio,
                     float near_clip,
                     float far_clip) {
   // Bind UBO
-  glBindBuffer(GL_UNIFORM_BUFFER, matricies_UBO_);
+  glBindBuffer(GL_UNIFORM_BUFFER, matrices_UBO_);
 
   // Update view matrix
   view_matrix_ = glm::lookAt(world_position_,

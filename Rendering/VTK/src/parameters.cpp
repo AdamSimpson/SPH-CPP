@@ -52,7 +52,7 @@ void Parameters::ReadParameters() {
   }
 }
 
-// Returns a double3 from comma seperated input string
+// Returns a double3 from comma separated input string
 double3 ToDouble3(const std::string input_string) {
   double3 result;
   std::stringstream ss(input_string);

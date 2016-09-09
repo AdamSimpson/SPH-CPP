@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
       emitter.process_input(user_input);
       overlay.process_input(user_input);
 
-      // Sync compute and render processes if neccessary
+      // Sync compute and render processes if necessary
       if(Utility::is_ready(compute_future) && parameters.compute_active()) {
         update_fps(clock_start, overlay);
 

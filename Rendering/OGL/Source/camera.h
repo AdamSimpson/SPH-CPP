@@ -43,7 +43,7 @@ public:
   glm::mat4& view_matrix();
 
 private:
-  GLuint matricies_UBO_;
+  GLuint matrices_UBO_;
   float speed_;
   float pitch_;
   float yaw_;

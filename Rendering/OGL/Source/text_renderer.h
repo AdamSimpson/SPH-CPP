@@ -30,6 +30,7 @@ THE SOFTWARE.
 #include "glm/glm.hpp"
 #include "drawable.h"
 #include <map>
+#include <string>
 
 namespace sim {
 

@@ -103,8 +103,8 @@ public:
   /*! Initialize fluid distributed amonst multiple processes
    * Note: Handle initilization requiring constructed member references
    */
-  void initilize_fluid(Particles<Real,Dim> & particles,
-                       const Parameters<Real,Dim> & parameters) {
+  void initialize_fluid(Particles<Real, Dim> &particles,
+                        const Parameters<Real, Dim> &parameters) {
     this->set_domain_bounds(parameters.initial_fluid(),
                             parameters.boundary());
     edge_width_ = 1.2*parameters.smoothing_radius();
@@ -614,7 +614,7 @@ public:
     MPI_Status statuses[12];
     sim::mpi::wait_all(requests_, 12, statuses);
 
-    // copy recieved left/right to correct position in particle array
+    // copy received left/right to correct position in particle array
     int received_left_count, received_right_count;
     MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
     MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
@@ -715,13 +715,13 @@ public:
     MPI_Status statuses[12];
     sim::mpi::wait_all(requests_, 12, statuses);
 
-    // copy recieved left/right to correct position in particle array
+    // copy received left/right to correct position in particle array
 
     int received_left_count, received_right_count;//, sent_left_count, sent_right_count;
     MPI_Get_count(&statuses[0], MPI_VEC_, &received_left_count);
     MPI_Get_count(&statuses[3], MPI_VEC_, &received_right_count);
 
-    // Left halo doesn't need to be copied but does need to incriment particle counts
+    // Left halo doesn't need to be copied but does need to increment particle counts
     this->add_halo_particles_left(particles,
                              &particles.positions()[receive_left_index_],
                              &particles.position_stars()[receive_left_index_],
