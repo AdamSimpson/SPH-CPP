@@ -36,7 +36,7 @@ THE SOFTWARE.
 class ManagedAllocation {
 public:
   ManagedAllocation()                                    = default;
-  virtual ~ManagedAllocation()                           = default;
+  ~ManagedAllocation()                           = default;
   ManagedAllocation(const ManagedAllocation&)            = delete;
   ManagedAllocation& operator=(const ManagedAllocation&) = delete;
   ManagedAllocation(ManagedAllocation&&) noexcept        = delete;
