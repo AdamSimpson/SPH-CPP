@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../../Com
 set(CMAKE_CXX_STANDARD 14)
 set(CXX_STANDARD_REQUIRED TRUE)
 
-file(GLOB SRC_FILES src/*.cpp)
+file(GLOB SRC_FILES Source/*.cpp ../../Common/*.cpp)
 include_directories(".")
 
 add_executable(sph-renderer ${SRC_FILES})

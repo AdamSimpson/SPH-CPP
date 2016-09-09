@@ -1,3 +1,27 @@
+/*
+The MIT License (MIT)
+
+Copyright (c) 2016 Adam Simpson
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+*/
+
 #pragma once
 
 #include "device.h"
@@ -6,17 +30,13 @@
 #include "utility_math.h"
 #include "dimension.h"
 
-// Forward decleration of Axis Aligned Boundary Box
-//template<typename Real, Dimension dim> class AABB;
-
 /////////////////////////////////////////////////
 // A basic vector class to handle arbitrary type
 // and dimensions
 /////////////////////////////////////////////////
 
-/**
-  @brief Determine the alignment of struct - requires C++14 to work correctly
-**/
+/*! Determine the alignment of struct - requires C++14 to work correctly
+ */
 constexpr int vec_alignment(const size_t struct_bytes) {
 /*
   // Available CUDA alignments
@@ -39,37 +59,31 @@ constexpr int vec_alignment(const size_t struct_bytes) {
   @brief Generic n-dim Vec implementation
   @tparam T component type
   @tparam n dimension
-**/
+ */
 template <typename T, int N>
 struct Vec {
-  /**
-    @brief Component storage
-  **/
-  T data_[N];
 
-  /**
-    @brief Default constructor: components uninitialized
-  **/
+  T data_[N]; /**< Component storage **/
+
+  /*! Default constructor: components uninitialized
+   */
   DEVICE_CALLABLE
   Vec() = default;
 
-  /**
-    @brief Pointer constructor: components initilized to pointed data
-    @param[in] p_data pointer to data
-  **/
+  /*! Pointer constructor: components initilized to pointed data
+     @param p_data pointer to data
+   */
   DEVICE_CALLABLE
   explicit Vec(const T *const p_data){ for(int i=0; i<N; ++i){ data_[i] = p_data[i]; } }
 
-  /**
-    @brief Scalar constructor: components initilized to scalar value
-    @param[in] value scalar component value
-  **/
+  /*! Scalar constructor: components initilized to scalar value
+     @param value scalar component value
+   */
   DEVICE_CALLABLE
   explicit Vec(const T value){ for(int i=0; i<N; ++i){ data_[i] = value;} }
 
-  /**
-    @brief Cast operator: static_cast() components of n-dim Vec
-  **/
+  /*! Cast operator: static_cast() components of n-dim Vec
+   */
   template<typename T_out>
   DEVICE_CALLABLE
   operator Vec<T_out,N>() {
@@ -80,97 +94,83 @@ struct Vec {
     return Vec<T_out,N>(data_out);
   }
 
-  /**
-    @brief Subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
-  **/
+  /*! Subscript operator: access vector components with bracket notation
+     @param index of element
+     @return index'th element of Vec
+   */
   DEVICE_CALLABLE
   T& operator[] (const size_t index) { return data_[index]; }
 
-  /**
-    @brief Const subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
-  **/
+  /*! Const subscript operator: access vector components with bracket notation
+     @param index of element
+     @return index'th element of Vec
+   */
   DEVICE_CALLABLE
   const T& operator[] (const size_t index) const { return data_[index]; }
 
 };
 
-/**
-  @struct Vec
-  @brief Specialization for 2-dim Vec
-**/
+/*! Template specialization for 2-dim Vec
+ */
 template <typename T>
 struct Vec<T, 2> {
-  /**
-    @brief union component storage
-  **/
+
   union {
     T data_[2];          /**< component array */
     struct { T x, y; }; /**<  x, y access */
     struct { T begin, end; }; /**< begin, end access */
-  };
+  }; /**< union component storage */
 
-  /**
-    @brief Default constructor: components uninitialized
-  **/
+  /*! Default constructor: components uninitialized
+   */
   DEVICE_CALLABLE
   Vec() = default;
 
-  /**
-    @brief Constructor: components initilized
-    @param[in] x_ x component
-    @param[in] y_ y component
-  **/
+  /*! Constructor: components initilized
+     @param x_ x component
+     @param y_ y component
+   */
   DEVICE_CALLABLE
   explicit Vec(const T x_, const T y_) : x(x_), y(y_) {}
 
-  /**
-    @brief Constructor: components initilized to value
-    @param[in] value x, y component
-  **/
+  /*! Constructor: components initilized to value
+     @param value x, y component
+   */
   DEVICE_CALLABLE
   constexpr explicit Vec(const T value) : x(value), y(value) {}
 
-  /**
-    @brief Pointer constructor: components initilized to pointed data
-    @param[in] p_data pointer to data
-  **/
+  /*! Pointer constructor: components initilized to pointed data
+     @param p_data pointer to data
+   */
   DEVICE_CALLABLE
   constexpr explicit Vec(T *data_in) : x(data_in[0]), y(data_in[1]) {}
 
-  /**
-    @brief Construct Vec2 from Vec3 by truncating z
-    @param[in] vec input Vec3
-  **/
+  /*! Construct Vec2 from Vec3 by truncating z
+     @param vec input Vec3
+   */
   DEVICE_CALLABLE
   constexpr explicit Vec(const Vec<T,3>& vec): x{vec.x}, y{vec.y} {}
 
-  /**
-    @brief Cast operator: static_cast() data of Vec2
-  **/
+  /*! Cast operator: static_cast() data of Vec2
+   */
   template<typename T_out>
   DEVICE_CALLABLE
   operator Vec<T_out,2>() const {
     return Vec<T_out,2>(static_cast<T_out>(x), static_cast<T_out>(y)); }
 
-  /**
-    @brief Subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
-  **/
+  /*! Subscript operator: access vector components with bracket notation
+     @param index of element
+     @return index'th element of Vec
+   */
   DEVICE_CALLABLE
   T& operator[] (const size_t index) { return data_[index]; }
   DEVICE_CALLABLE
   T& operator[] (const int index) { return data_[index]; }
 
-  /**
-    @brief Const subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
-  **/
+  /*! Const subscript operator: access vector components with bracket notation
+     @param[in] index of element
+     @return index'th element of Vec
+   */
   DEVICE_CALLABLE
   const T& operator[] (const size_t index) const { return data_[index]; }
   DEVICE_CALLABLE
@@ -180,7 +180,7 @@ struct Vec<T, 2> {
 /**
   @struct Vec
   @brief Specialization for 3-dim Vec
-**/
+ */
 template <typename T>
 struct Vec<T, 3> {
 
@@ -191,72 +191,63 @@ struct Vec<T, 3> {
     struct { T h, s, v; };  /**< h, s, v access */
   };
 
-  /**
-    @brief Default constructor: components uninitialized
+  /*! Default constructor: components uninitialized
   **/
   DEVICE_CALLABLE
   Vec() = default;
 
-  /**
-    @brief Constructor: components initilized
-    @param[in] x_ x component
-    @param[in] y_ y component
-    @param[in] z_ z component
+  /*! Constructor: components initilized
+     @param x_ x component
+     @param y_ y component
+     @param z_ z component
   **/
   DEVICE_CALLABLE
   explicit Vec(const T x_, const T y_, const T z_) : x(x_), y(y_), z(z_) {}
 
-  /**
-    @brief Constructor: components initilized to value
-    @param[in] value x, y, z  component
+  /*! Constructor: components initilized to value
+     @param value x, y, z  component
   **/
   DEVICE_CALLABLE
   constexpr explicit Vec(const T value) : x(value), y(value), z(value) {}
 
-  /**
-    @brief Pointer constructor: components initilized to pointed data
-    @param[in] p_data pointer to data
+  /*! Pointer constructor: components initilized to pointed data
+     @param p_data pointer to data
   **/
   DEVICE_CALLABLE
   constexpr explicit Vec(T *data) : x(data[0]), y(data[1]), z(data[2]) {}
 
-  /**
-    @brief Construct Vec2 from Vec3 by setting z to 0
-    @param[in] vec Vec2
+  /*! Construct Vec2 from Vec3 by setting z to 0
+     @param vec Vec2
   **/
   DEVICE_CALLABLE
   explicit Vec(const Vec<T, 2>& vec): x{vec[0]}, y{vec[1]}, z{0} {}
 
-  /**
-    @brief Construct Vec2 from Vec3 by specifying z
-    @param[in] vec Vec2 x,y values
-    @param[in] z z value
+  /*! Construct Vec2 from Vec3 by specifying z
+     @param vec Vec2 x,y values
+     @param z z value
   **/
   DEVICE_CALLABLE
   explicit Vec(const Vec<T, 2>& vec, T z): x{vec[0]}, y{vec[1]}, z{z} {}
 
-  /**
-    @brief Cast operator: static_cast() data of Vec3
+  /*! Cast operator: static_cast() data of Vec3
   **/
   template<typename T_out>
   DEVICE_CALLABLE
   operator Vec<T_out,3>() const
     { return Vec<T_out,3>(static_cast<T_out>(x), static_cast<T_out>(y), static_cast<T_out>(z)); }
 
-  /**
-    @brief Subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
+  /*! Subscript operator: access vector components with bracket notation
+     @param index of element
+     @return index'th element of Vec
   **/
   DEVICE_CALLABLE
   T& operator[] (const size_t index) { return data_[index]; }
   DEVICE_CALLABLE
   T& operator[] (const int index) { return data_[index]; }
 
-  /**
-    @brief Const subscript operator: access vector components with bracket notation
-    @param[in] index of element
-    @return index'th element of Vec
+  /*! Const subscript operator: access vector components with bracket notation
+     @param index of element
+     @return index'th element of Vec
   **/
   DEVICE_CALLABLE
   const T& operator[] (const size_t index) const { return data_[index]; }
@@ -268,9 +259,11 @@ struct Vec<T, 3> {
 Free Operators
 **/
 
-/**
-  @brief vec vec component wise addition operator
-**/
+/*! vec-vec component wise addition operator
+ * @param lhs left side vector to add
+ * @param rhs right side vector to add
+ * @return lhs[i] + rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator+(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -281,9 +274,11 @@ Vec<T,n> operator+(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec scalar component wise addition operator
-**/
+/*! vec-scalar addition operator
+ * @param lhs left side vector to add
+ * @param rhs right side scalar to add
+ * @return lhs[i] + rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator+(const Vec<T,n>& lhs, const T rhs) {
@@ -294,9 +289,11 @@ Vec<T,n> operator+(const Vec<T,n>& lhs, const T rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec vec component wise subtraction operator
-**/
+/*! vec-vec component wise subtraction operator
+ * @param lhs left side vector
+ * @param rhs right side vector to subtract
+ * @return lhs[i] - rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator-(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -307,9 +304,11 @@ Vec<T,n> operator-(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec scalar component wise subtraction operator
-**/
+/*! vec-scalar subtraction operator
+ * @param lhs left side vector
+ * @param rhs right side scalar to subtract
+ * @return lhs[i] - rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator-(const Vec<T,n>& lhs, const T rhs) {
@@ -320,9 +319,11 @@ Vec<T,n> operator-(const Vec<T,n>& lhs, const T rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec vec component wise multiplication operator
-**/
+/*! vec-vec component wise multiplication operator
+ * @param lhs left side vector to multiply
+ * @param rhs right side vector to multiply
+ * @return lhs[i] * rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator*(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -333,9 +334,11 @@ Vec<T,n> operator*(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec scalar component wise multiplication operator
-**/
+/*! vec-scalar multiplication operator
+ * @param lhs left side vector to multiply
+ * @param rhs right side scalar
+ * @return lhs[i] * rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator*(const Vec<T,n>& lhs, const T rhs) {
@@ -346,9 +349,11 @@ Vec<T,n> operator*(const Vec<T,n>& lhs, const T rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief scalar vec component wise multiplication operator
-**/
+/*! scalar-vec multiplication operator
+ * @param lhs left side scalar
+ * @param rhs right side vector to multiply
+ * @return lhs[i] * rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator*(const T lhs, const Vec<T,n>& rhs) {
@@ -359,9 +364,11 @@ Vec<T,n> operator*(const T lhs, const Vec<T,n>& rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec scalar component wise divison operator
-**/
+/*! vec-scalar division operator
+ * @param lhs left side vector
+ * @param rhs right side scalar to divide by
+ * @return lhs[i] / rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> operator/(const Vec<T,n>& lhs, const T rhs) {
@@ -372,9 +379,11 @@ Vec<T,n> operator/(const Vec<T,n>& lhs, const T rhs) {
   return Vec<T,n>(data);
 }
 
-/**
-  @brief vec vec component wise accumulate operator
-**/
+/*! vec-vec component wise accumulate operator
+ * @param lhs vector to be accumulated into
+ * @param rhs vector to be accumulated by
+ * @return lhs[i] += rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator+=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -384,9 +393,11 @@ Vec<T,n>& operator+=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return lhs;
 }
 
-/**
-  @brief vec scalar component wise accumulate operator
-**/
+/*! vec-scalar component wise accumulate operator
+ * @param lhs vector to be accumulated into
+ * @param rhs scalar to be accumulated by
+ * @return lhs[i] += rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator+=(Vec<T,n>& lhs, const T rhs) {
@@ -396,9 +407,11 @@ Vec<T,n>& operator+=(Vec<T,n>& lhs, const T rhs) {
   return lhs;
 }
 
-/**
-  @brief vec vec component wise decrement operator
-**/
+/*! vec-vec component wise decrement operator
+ * @param lhs vector to be decremented into
+ * @param rhs vector to be decremented by
+ * @return lhs[i] -= rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator-=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -408,9 +421,11 @@ Vec<T,n>& operator-=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return lhs;
 }
 
-/**
-  @brief vec scalar component wise decrement operator
-**/
+/*! vec-scalar component wise decrement operator
+ * @param lhs vector to be decremented into
+ * @param rhs scalar to be decremented by
+ * @return lhs[i] -= rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator-=(Vec<T,n>& lhs, const T rhs) {
@@ -420,9 +435,11 @@ Vec<T,n>& operator-=(Vec<T,n>& lhs, const T rhs) {
   return lhs;
 }
 
-/**
-  @brief vec vec component wise multiplication assignment operator
-**/
+/*! vec-vec component wise multiplication assignment operator
+ * @param lhs vector to be multiply assigned into
+ * @param rhs vector to be multiplied by
+ * @return lhs[i] *= rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator*=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -432,9 +449,11 @@ Vec<T,n>& operator*=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return lhs;
 }
 
-/**
-  @brief vec scalar component wise multiplication assignment operator
-**/
+/*! vec-scalar component wise multiplication assignment operator
+ * @param lhs vector to be multiply assigned into
+ * @param rhs scalar to be multiplied by
+ * @return lhs[i] *= rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator*=(Vec<T,n>& lhs, const T& rhs) {
@@ -444,9 +463,11 @@ Vec<T,n>& operator*=(Vec<T,n>& lhs, const T& rhs) {
   return lhs;
 }
 
-/**
-  @brief vec vec component wise division assignment operator
-**/
+/*! vec-vec component wise division assignment operator
+ * @param lhs vector to be division assigned into
+ * @param rhs vector to be divided by
+ * @return lhs[i] /= rhs[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator/=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -456,9 +477,11 @@ Vec<T,n>& operator/=(Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return lhs;
 }
 
-/**
-  @brief vec scalar component wise division assignment operator
-**/
+/*! vec-scalar component wise division assignment operator
+ * @param lhs vector to be division assigned into
+ * @param rhs scalar to be divided by
+ * @return lhs[i] /= rhs
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n>& operator/=(Vec<T,n>& lhs, const T& rhs) {
@@ -468,9 +491,12 @@ Vec<T,n>& operator/=(Vec<T,n>& lhs, const T& rhs) {
   return lhs;
 }
 
-/**
-  @brief vector dot product
-**/
+/*! Vector dot product
+ *
+ * @param lhs left vector
+ * @param rhs right vector
+ * @return vector dot product
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T dot(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
@@ -481,54 +507,59 @@ T dot(const Vec<T,n>& lhs, const Vec<T,n>& rhs) {
   return dot;
 }
 
-/**
-  @brief vector magnitude squared
-**/
+/*! Vector magnitude squared
+ * @param vec vector
+ * @return magnitude squared of the scalar magnitude
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T magnitude_squared(const Vec<T,n>& vec) {
   return dot(vec, vec);
 }
 
-/**
-  @brief vector magnitude
-**/
+/*! Vector magnitude
+ * @param vec vector
+ * @return magnitude of the scalar magnitude
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T magnitude(const Vec<T,n>& vec) {
   return sqrt(magnitude_squared(vec));
 }
 
-/**
-  @brief reciprical vector magnitude
-**/
+/*! Reciprical vector magnitude
+ * @param vec vector
+ * @return reciprical of the magnitude of the scalar magnitude
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T inverse_magnitude(const Vec<T,n>& vec) {
   return static_cast<T>(1.0) / sqrt(magnitude_squared(vec));
 }
 
-/**
-  @brief return vector normal
-**/
+/*! Vector normal
+ * @param vec vector to take normal of
+ * @return a vector in the same direction of vec but of unit magnitude
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> normal(const Vec<T,n>& vec) {
   return inverse_magnitude(vec) * vec;
 }
 
-/**
-  @brief normalize vector
-**/
+/*! Normalize vector
+ * @param vec vector to normalize
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 void normalize(Vec<T,n>& vec) {
   vec *= inverse_magnitude(vec);
 }
 
-/**
-  @brief component wise floor
-**/
+/*! Component wise floor
+ * @param vec vector to floor
+ * @return vector containing floored components
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> floor(const Vec<T,n>& vec) {
@@ -539,9 +570,10 @@ Vec<T,n> floor(const Vec<T,n>& vec) {
   return floor_vec;
 }
 
-/**
-  @brief component wise ceil
-**/
+/*! Component wise ceil
+ * @param vec vector to ceil
+ * @return vector containing ceiled components
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> ceil(const Vec<T,n>& vec) {
@@ -552,9 +584,10 @@ Vec<T,n> ceil(const Vec<T,n>& vec) {
   return floor_vec;
 }
 
-/**
-  @brief component wise vector sum
-**/
+/*! Sum of vector components
+ * @param vec vector to provide sum of
+ * @return the scalar sum of each component of vector
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T sum(const Vec<T,n>& vec) {
@@ -565,9 +598,10 @@ T sum(const Vec<T,n>& vec) {
   return sum;
 }
 
-/**
-  @brief return product of vector components
-**/
+/*! Component wise product of vector components
+ * @param vec vector to provide product of
+ * @return the scalar product of each component of the vector
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 T product(const Vec<T,n>& vec) {
@@ -578,9 +612,11 @@ T product(const Vec<T,n>& vec) {
   return product;
 }
 
-/**
-  @brief vector cross product
-**/
+/*! 3D vector cross product
+ * @param lhs vector to be crossed into
+ * @param rhs vector to cross
+ * @return 3D vector cross product
+ */
 template<typename T>
 DEVICE_CALLABLE
 Vec<T,three_dimensional> cross(const Vec<T, three_dimensional>& lhs,
@@ -593,10 +629,12 @@ Vec<T,three_dimensional> cross(const Vec<T, three_dimensional>& lhs,
   return cross;
 }
 
-/**
-  @brief component wise clamp
-  @return newly constructed clamped vector
-**/
+/*! Component wise vector clamp
+ * @param vec   Vector to be clamped
+ * @param lower Vector containing minimum allowed values
+ * @param upper Vector containing maximum allowed values
+ * @return      a vector with components clamped between lower[i] and upper[i]
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> clamp(const Vec<T,n>& vec, const Vec<T,n>& lower, const Vec<T,n>& upper) {
@@ -607,10 +645,12 @@ Vec<T,n> clamp(const Vec<T,n>& vec, const Vec<T,n>& lower, const Vec<T,n>& upper
   return clamp_vec;
 }
 
-/**
-   @brief component wise clamp
-   @return newly constructed clamped vector
-**/
+/*! Component wise scalar clamp
+ * @param vec   Vector to be clamped
+ * @param lower Minimum allowed scalar value
+ * @param upper Maximum allowed scalar value
+ * @return      a vector with components clamped between lower and upper
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 Vec<T,n> clamp(const Vec<T,n>& vec, const T& lower, const T& upper) {
@@ -621,10 +661,11 @@ Vec<T,n> clamp(const Vec<T,n>& vec, const T& lower, const T& upper) {
   return clamp_vec;
 }
 
-/**
-  @brief component wise in-place clamp
-  @return original vector with values clamped
-**/
+/*! In-place component wise vector clamp
+ * @param vec   Vector to be clamped
+ * @param lower Vector containing minimum allowed values
+ * @param upper Vector containing maximum allowed values
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 void clamp_in_place(Vec<T,n>& vec, const Vec<T,n>& lower, const Vec<T,n>& upper) {
@@ -632,10 +673,11 @@ void clamp_in_place(Vec<T,n>& vec, const Vec<T,n>& lower, const Vec<T,n>& upper)
      Utility::clamp_in_place(vec[i], lower[i], upper[i]);
 }
 
-/**
-   @brief component wise in-place clamp
-   @return original vector with values clamped
-**/
+/*! In-place component wise scalar clamp
+ * @param vec   Vector to be clamped
+ * @param lower Minimum allowed scalar value
+ * @param upper Maximum allowed scalar value
+ */
 template<typename T, int n>
 DEVICE_CALLABLE
 void clamp_in_place(Vec<T,n>& vec, const T& lower, const T& upper) {
@@ -643,9 +685,11 @@ void clamp_in_place(Vec<T,n>& vec, const T& lower, const T& upper) {
     Utility::clamp_in_place(vec[i], lower, upper);
 }
 
-/**
-  @brief left shift operator: allow Vec<> to be printed
-**/
+/** left shift operator: allow Vec<> to be printed
+ * @param o ostream
+ * @param vec vector to print
+ * @return modified reference to o
+ */
 template<typename T, int n>
 std::ostream& operator<< (std::ostream& o, const Vec<T,n>& vec)
 {
@@ -660,8 +704,3 @@ std::ostream& operator<< (std::ostream& o, const Vec<T,n>& vec)
 }
 
 typedef Vec<std::size_t, 2> IndexSpan; /**< type to hold begin, end index values **/
-/*
-std::size_t count(const IndexSpan& span) {
-  return span.end - span.begin;
-}
-*/

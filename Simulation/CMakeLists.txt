@@ -1,14 +1,18 @@
 cmake_minimum_required(VERSION 3.1)
 project(sph)
 
+# Set default CPP thrust backend
+set(CPP_PAR TRUE)
+
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../Common/CMake/)
 Message(${CMAKE_MODULE_PATH})
 set(CMAKE_CXX_STANDARD 14) # Doesn't work with NVCC
 set(CXX_STANDARD_REQUIRED TRUE)
 
 # Set source files
-file(GLOB SRC_FILES src/*.cpp)
-file(GLOB TEST_SRC_FILES src/neighbors.cpp Tests/*.cpp)
+file(GLOB SRC_FILES Source/*.cpp ../Common/*.cpp)
+file(GLOB SERIAL_TEST_SRC_FILES Source/neighbors.cpp Tests/Serial/*.cpp)
+file(GLOB PARALLEL_TEST_SRC_FILES Source/neighbors.cpp ../Common/*.cpp Tests/Parallel/*.cpp)
 
 # Add a bit more verbose output
 add_definitions(-Wall)
@@ -29,10 +33,10 @@ find_package(ADIOS)
 add_subdirectory(External/catch)
 add_library(Catch INTERFACE)
 target_include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
-include_directories(Catch INTERFACE ${CATCH_INCLUDE_DIR})
+include_directories(${CATCH_INCLUDE_DIR})
 
 # Add includes
-include_directories("." "./src")
+include_directories("." "./Source")
 include_directories(sph, ${CMAKE_CURRENT_SOURCE_DIR}/../Common)
 include_directories(${MPI_INCLUDE_PATH})
 include_directories(${Boost_INCLUDE_DIRS})
@@ -46,9 +50,11 @@ if(${CUDA})
   find_package(CUDA REQUIRED)
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-DCUDA -ccbin /usr/bin/g++-5 --expt-extended-lambda --expt-relaxed-constexpr --std=c++11)
   set_source_files_properties( ${SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
-  set_source_files_properties( ${TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
+  set_source_files_properties( ${SERIAL_TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
+  set_source_files_properties( ${PARALLEL_TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
   cuda_add_executable(sph ${SRC_FILES})
-  cuda_add_executable(sph_tests ${TEST_SRC_FILES})
+  cuda_add_executable(sph_serial_tests ${SERIAL_TEST_SRC_FILES})
+  cuda_add_executable(sph_parallel_tests ${PARALLEL_TEST_SRC_FILES})
 endif()
 
 # setup for OpenMP
@@ -59,7 +65,8 @@ if(${OPENMP})
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
   set_source_files_properties(${SRC_FILES} PROPERTIES LANGUAGE CXX)
   add_executable(sph ${SRC_FILES})
-  add_executable(sph_tests ${TEST_SRC_FILES})
+  add_executable(sph_serial_tests ${SERIAL_TEST_SRC_FILES})
+  add_executable(sph_parallel_tests ${PARALLEL_TEST_SRC_FILES})
   add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_OMP -DOPENMP")
   set_target_properties(sph PROPERTIES LINKER_LANGUAGE CXX)
 endif()
@@ -71,9 +78,12 @@ if(${CUDA_AND_OPENMP})
   find_package(OpenMP REQUIRED)
   set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-DCUDA -ccbin /usr/bin/g++-5 --expt-extended-lambda --expt-relaxed-constexpr --std=c++11 -Xcompiler ${OpenMP_CXX_FLAGS})
   set_source_files_properties( ${SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
-  set_source_files_properties( ${TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
+  set_source_files_properties( ${SERIAL_TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
+  set_source_files_properties( ${PARALLEL_TEST_SRC_FILES} PROPERTIES CUDA_SOURCE_PROPERTY_FORMAT OBJ )
   cuda_add_executable(sph ${SRC_FILES})
-  cuda_add_executable(sph_tests ${TEST_SRC_FILES})
+  cuda_add_executable(sph_serial_tests ${SERIAL_TEST_SRC_FILES})
+  cuda_add_executable(sph_parallel_tests ${PARALLEL_TEST_SRC_FILES})
+
   set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
 endif()
 
@@ -81,12 +91,17 @@ endif()
 if(${CPP_PAR})
   Message("Enabling CPP")
   add_executable(sph ${SRC_FILES})
-  add_executable(sph_tests ${TEST_SRC_FILES})
+  add_executable(sph_serial_tests ${SERIAL_TEST_SRC_FILES})
+  add_executable(sph_parallel_tests ${PARALLEL_TEST_SRC_FILES})
   add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP -DCPP_PAR -Wno-unused-local-typedef")
 endif()
 
-add_dependencies(sph_tests catch)
-add_test(NAME SphTests COMMAND sph_tests)
+add_dependencies(sph_serial_tests catch)
+add_dependencies(sph_parallel_tests catch)
+
+add_test(NAME SphSerialTests COMMAND sph_serial_tests)
+add_test(NAME SphParallelTests COMMAND sph_parallel_tests)
+
 
 # Add link libraries
 if(${CUDA_DEBUG})
@@ -94,15 +109,22 @@ if(${CUDA_DEBUG})
   target_link_libraries(sph_tests ${CUDA_TOOLKIT_ROOT_DIR}/lib64/libnvToolsExt.so)
 endif()
 
+# Copy .ini and .xml runtime files needed for run
+file(GLOB RUNTIME_FILES Runtime/*)
+file(COPY ${RUNTIME_FILES} DESTINATION .)
+
 # Copy .ini runtime files needed for tests
-file(GLOB TEST_INI_FILES Tests/*.ini)
+file(GLOB TEST_INI_FILES Tests/Serial/*.ini Tests/Parallel/*.ini)
 file(COPY ${TEST_INI_FILES} DESTINATION .)
 
 target_link_libraries(sph ${MPI_C_LIBRARIES})
 target_link_libraries(sph ${Boost_LIBRARIES})
 target_link_libraries(sph ${ADIOS_LIBRARIES})
-target_link_libraries(sph_tests Catch)
+target_link_libraries(sph_serial_tests Catch)
+target_link_libraries(sph_parallel_tests Catch)
+target_link_libraries(sph_parallel_tests ${MPI_C_LIBRARIES})
 
 # Install binaries
 install(TARGETS sph DESTINATION bin)
-install(TARGETS sph_tests DESTINATION bin)
+install(TARGETS sph_serial_tests DESTINATION bin)
+install(TARGETS sph_parallel_tests DESTINATION bin)
