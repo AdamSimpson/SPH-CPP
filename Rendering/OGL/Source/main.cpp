@@ -53,7 +53,7 @@ void update_fps(std::chrono::time_point<std::chrono::high_resolution_clock> &clo
 int main(int argc, char *argv[]) {
   try {
     sim::Distributor<Real, Dim> distributor;
-    sim::Parameters<Real, Dim> parameters{"../../../Common/params.ini"};
+    sim::Parameters<Real, Dim> parameters{"../../../Simulation/Runtime/params.ini"};
     sim::Emitter<Real, Dim> emitter{parameters};
     sim::UserInput user_input;
 
