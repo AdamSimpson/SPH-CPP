@@ -335,6 +335,7 @@ SCENARIO( "Vecs can be multiply and divide equaled", "[Vec]" ) {
   }
 } // END Vecs can be multiply and divide equaled
 
+/*
 SCENARIO( "Vecs can use dot product based operations", "[Vec]" ) {
   GIVEN("two Vec<float,3> v,w") {
     Vec<float,3> v(0.0f, 1.0f, 2.0f);
@@ -390,6 +391,7 @@ SCENARIO( "Vecs can use dot product based operations", "[Vec]" ) {
     }
   }
 }
+*/
 
 SCENARIO( "Vecs have utility math functions", "[Vec]" ) {
   GIVEN("a Vec<float,3> v") {
