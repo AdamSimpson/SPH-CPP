@@ -51,7 +51,7 @@ namespace sim {
     **/
     AdiosWriter(const std::string &adios_writer_xml,
                 const Distributor<Real, Dim> &distributor): distributor_{distributor} {
-      int err = adios_init(adios_writer_xml.c_str(), const_cast<MPI_Comm>(distributor_.comm_compute().MPI_comm()));
+      int err = adios_init(adios_writer_xml.c_str(), (MPI_Comm)distributor_.comm_compute().MPI_comm());
       if (err) {
         // Not all ranks return err on failure and so
         // MPI_Finalize will deadlock when distributor is destructed
