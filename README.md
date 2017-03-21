@@ -1,6 +1,6 @@
 A demonstration of using Thrust and modern C++ to produce portable parallel applications.
 
-# macOS
+# macOS dependencies
 ```
 $ brew install gcc6 --without-multilib
 $ brew install sdl2
@@ -11,7 +11,7 @@ $ brew install glm
 $ brew install cmake
 $ brew install boost
 ```
-
+# macOS building
 ```
 $ mkdir build
 $ cd build
