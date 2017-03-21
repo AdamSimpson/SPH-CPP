@@ -16,4 +16,12 @@ $ brew install boost
 $ mkdir build
 $ cd build
 $ CC=gcc-6 CXX=g++-6 cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=1 -DCPP_PAR=false ..
+$ make
+$ make install
+```
+
+# macOS running
+```
+cd ../Runtime
+mpirun -n 1 ./sph-renderer : -n 1 ./sph
 ```
