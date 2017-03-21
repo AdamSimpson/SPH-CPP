@@ -65,11 +65,11 @@ void Container::draw() const {
 void Container::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  Utility::compile_shader(vertex_shader, "../shaders/container.vert");
+  Utility::compile_shader(vertex_shader, "Shaders/container.vert");
 
   // Compile fragment shader
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  Utility::compile_shader(fragment_shader, "../shaders/container.frag");
+  Utility::compile_shader(fragment_shader, "Shaders/container.frag");
 
   // Create shader program
   program_ = glCreateProgram();

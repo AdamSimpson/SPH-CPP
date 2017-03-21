@@ -84,11 +84,11 @@ void TextRenderer::create_buffers() {
 void TextRenderer::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  Utility::compile_shader(vertex_shader, "../shaders/text.vert");
+  Utility::compile_shader(vertex_shader, "Shaders/text.vert");
 
   // Compile frag shader
   GLuint frag_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  Utility::compile_shader(frag_shader, "../shaders/text.frag");
+  Utility::compile_shader(frag_shader, "Shaders/text.frag");
 
   // Create shader program
   program_ = glCreateProgram();

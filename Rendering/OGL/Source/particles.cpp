@@ -107,15 +107,15 @@ void Particles::destroy_buffers() {
 void Particles::create_program() {
   // Compile vertex shader
   GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-  Utility::compile_shader(vertex_shader, "../shaders/particles.vert");
+  Utility::compile_shader(vertex_shader, "Shaders/particles.vert");
 
   // Compile frag shader
   GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-  Utility::compile_shader(fragment_shader, "../shaders/particles.frag");
+  Utility::compile_shader(fragment_shader, "Shaders/particles.frag");
 
   // Compile geometry shader
   GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-  Utility::compile_shader(geometry_shader, "../shaders/particles.geom");
+  Utility::compile_shader(geometry_shader, "Shaders/particles.geom");
 
   // Create shader program
   program_ = glCreateProgram();
