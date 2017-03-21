@@ -47,4 +47,4 @@ find_package(Freetype REQUIRED)
 include_directories(${FREETYPE_INCLUDE_DIRS})
 target_link_libraries(sph-renderer ${FREETYPE_LIBRARIES})
 
-install(TARGETS sph-renderer DESTINATION bin)
+install(TARGETS sph-renderer DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../Runtime")

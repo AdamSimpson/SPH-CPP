@@ -45,7 +45,7 @@ TextRenderer::TextRenderer(glm::vec2 screen_dims,
     throw std::runtime_error("Error initializing FreeType library\n");
 
   // Load font face
-  if(FT_New_Face(ft_, "../src/DroidSerif-Regular.ttf", 0, &ft_face_))
+  if(FT_New_Face(ft_, "DroidSerif-Regular.ttf", 0, &ft_face_))
     throw std::runtime_error("Error loading font face\n");
 
   // Set font pixel size

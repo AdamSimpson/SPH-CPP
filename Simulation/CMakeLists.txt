@@ -125,6 +125,6 @@ target_link_libraries(sph_parallel_tests Catch)
 target_link_libraries(sph_parallel_tests ${MPI_C_LIBRARIES})
 
 # Install binaries
-install(TARGETS sph DESTINATION bin)
-install(TARGETS sph_serial_tests DESTINATION bin)
-install(TARGETS sph_parallel_tests DESTINATION bin)
+install(TARGETS sph DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../Runtime")
+install(TARGETS sph_serial_tests DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../Runtime")
+install(TARGETS sph_parallel_tests DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../Runtime")
