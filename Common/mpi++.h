@@ -71,6 +71,7 @@ namespace sim {
     template<typename T>
     MPI_Datatype get_mpi_type() {
       static_assert(sizeof(T) != sizeof(T), "MPI ERROR: get_mpi_type not supported");
+      return 0;
     }
 
     /*! float to MPI_FLOAT
