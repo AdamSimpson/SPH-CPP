@@ -130,7 +130,7 @@ SCENARIO("external forces can be applied") {
       const auto previous_velocities{particles.velocities()};
       particles.apply_external_forces(span);
       THEN("The velocity should increase by g*dt") {
-        for(int i=0; i<particles.local_count(); i++) {
+        for(unsigned int i=0; i<particles.local_count(); i++) {
           REQUIRE( particles.velocities()[i].x == Approx(previous_velocities[i].x) );
           REQUIRE( particles.velocities()[i].y == Approx(previous_velocities[i].y
                                                          + params.gravity() * params.time_step() ));
@@ -149,7 +149,7 @@ SCENARIO("external forces can be applied") {
       const auto previous_velocities{particles.velocities()};
       particles.apply_external_forces(span);
       THEN("The velocity should increase by g*dt") {
-        for(int i=0; i<particles.local_count(); i++) {
+        for(unsigned int i=0; i<particles.local_count(); i++) {
           REQUIRE( particles.velocities()[i].x == Approx(previous_velocities[i].x) );
           REQUIRE( particles.velocities()[i].y == Approx(previous_velocities[i].y
                                                          + params.gravity() * params.time_step() ));
@@ -167,7 +167,7 @@ SCENARIO("positions can be predicted") {
     particles.construct_fluid(params.initial_fluid());
 
     WHEN("velocities are set to (1.0, -1.0, 1.3) and positions are predicted") {
-      for(int i=0; i<particles.local_count(); i++) {
+      for(unsigned int i=0; i<particles.local_count(); i++) {
         particles.velocities()[i].x = 1.0;
         particles.velocities()[i].y = -1.0;
         particles.velocities()[i].z = 1.3;
@@ -177,7 +177,7 @@ SCENARIO("positions can be predicted") {
       particles.predict_positions(span);
 
       THEN("The position should increase by (-)1.0 * dt") {
-        for(int i=0; i<particles.local_count(); i++) {
+        for(unsigned int i=0; i<particles.local_count(); i++) {
           REQUIRE( particles.position_stars()[i].x == Approx(particles.positions()[i].x
                                                              + 1.0 * params.time_step() ));
           REQUIRE( particles.position_stars()[i].y == Approx(particles.positions()[i].y
