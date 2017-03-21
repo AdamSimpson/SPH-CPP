@@ -149,7 +149,7 @@ namespace sim {
       thrust::counting_iterator<std::size_t> search_begin(search_span.begin);
       thrust::counting_iterator<std::size_t> search_end(search_span.end);
 
-      thrust::upper_bound(thrust::system::omp::par, begin, end,
+      thrust::lower_bound(thrust::system::omp::par, begin, end,
                           search_begin, search_end,
                           result);
     }
@@ -167,7 +167,7 @@ namespace sim {
       thrust::counting_iterator<std::size_t> search_begin(search_span.begin);
       thrust::counting_iterator<std::size_t> search_end(search_span.end);
 
-      thrust::lower_bound(thrust::system::omp::par, begin, end,
+      thrust::upper_bound(thrust::system::omp::par, begin, end,
                           search_begin, search_end,
                           result);
     }
