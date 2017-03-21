@@ -23,7 +23,12 @@ find_package(MPI REQUIRED)
 set(Boost_NO_BOOST_CMAKE TRUE) # Ignore system boost and use module system boost
 find_package(Boost COMPONENTS system filesystem REQUIRED)
 
-find_package(Thrust REQUIRED)
+# find_package(Thrust REQUIRED)
+# Include latest thrust from github
+add_subdirectory(External/thrust)
+add_library(Thrust INTERFACE)
+target_include_directories(Thrust INTERFACE ${THRUST_INCLUDE_DIR})
+include_directories(${THRUST_INCLUDE_DIR})
 
 set(ENV{ADIOS_DIR} "/usr")
 message("Setting ADIOS_DIR manually to /usr")
@@ -96,6 +101,9 @@ if(${CPP_PAR})
   add_definitions("-x c++ -DTHRUST_DEVICE_SYSTEM=THRUST_DEVICE_SYSTEM_CPP -DCPP_PAR -Wno-unused-local-typedef")
 endif()
 
+add_dependencies(sph_serial_tests thrust)
+add_dependencies(sph_parallel_tests thrust)
+add_dependencies(sph thrust)
 add_dependencies(sph_serial_tests catch)
 add_dependencies(sph_parallel_tests catch)
 
@@ -120,9 +128,12 @@ file(COPY ${TEST_INI_FILES} DESTINATION .)
 target_link_libraries(sph ${MPI_C_LIBRARIES})
 target_link_libraries(sph ${Boost_LIBRARIES})
 target_link_libraries(sph ${ADIOS_LIBRARIES})
+target_link_libraries(sph Thrust)
 target_link_libraries(sph_serial_tests Catch)
+target_link_libraries(sph_serial_tests Thrust)
 target_link_libraries(sph_parallel_tests Catch)
 target_link_libraries(sph_parallel_tests ${MPI_C_LIBRARIES})
+target_link_libraries(sph_parallel_tests Thrust)
 
 # Install binaries
 install(TARGETS sph DESTINATION "${CMAKE_CURRENT_SOURCE_DIR}/../Runtime")
