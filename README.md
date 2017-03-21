@@ -2,8 +2,8 @@ A demonstration of using Thrust and modern C++ to produce portable parallel appl
 
 # macOS dependencies
 ```
-$ brew install gcc6 --without-multilib # OpenMP backend
-$ brew install gcc   # Serial backend
+$ brew install gcc6 --without-multilib
+$ brew install gcc
 $ brew install sdl2
 $ brew install mpich
 $ brew install freetype
@@ -19,7 +19,7 @@ $ cd build
 
 # Serial
 $ CC=gcc-6 CXX=g++-6 cmake -DCMAKE_BUILD_TYPE=Release -DCPP_PAR=true ..
-
+# ...OR...
 # Parallel OpenMP
 $ CC=gcc-6 CXX=g++-6 cmake -DCMAKE_BUILD_TYPE=Release -DOPENMP=true -DCPP_PAR=false ..
 
@@ -30,5 +30,5 @@ $ make install
 # macOS running
 ```
 cd ../Runtime
-mpirun -n 1 ./sph-renderer : -n 1 ./sph
+export OMP_NUM_THREADS=4 mpirun -n 1 ./sph-renderer : -n 1 ./sph
 ```
