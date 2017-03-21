@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1)
 project(sph)
 
 # Set default CPP thrust backend
-set(CPP_PAR TRUE)
+#set(CPP_PAR TRUE)
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_CURRENT_SOURCE_DIR}/../Common/CMake/)
 Message(${CMAKE_MODULE_PATH})
