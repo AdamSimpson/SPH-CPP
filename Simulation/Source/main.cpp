@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
         particles->find_neighbors(distributor.local_span(),
                                  distributor.resident_span());
 
-        for(int sub=0; sub<parameters->solve_step_count(); sub++) {
+        for(unsigned int sub=0; sub<parameters->solve_step_count(); sub++) {
 
           particles->compute_densities(distributor.resident_span());
 
